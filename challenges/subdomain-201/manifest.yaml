@@ -1,0 +1,9 @@
+title: "Subdomain Hunt 201"
+category: "web"
+difficulty: "medium"
+points: 250
+description: >
+  У компании MegaCorp сотни сервисных сабдоменов. Один из них хранит секретный документ.
+  Перебирайте Host-заголовки — найдите тот единственный сабдомен, который выдаёт флаг.
+flag: "flag{subd0m41n_hunt1ng_1s_4w3s0m3}"
+container_port: 5000

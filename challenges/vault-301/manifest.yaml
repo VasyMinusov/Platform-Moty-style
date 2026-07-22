@@ -1,0 +1,11 @@
+title: "The Vault: JWT None → SSTI → Pickle RCE"
+category: "web"
+difficulty: "hard"
+points: 500
+description: >
+  Защищённое хранилище секретов. Уровни защиты:
+  1. JWT-аутентификация... но что если алгоритм подменить?
+  2. Шаблонизация отчётов... возможно, слишком мощная?
+  3. Кэширование через pickle... а что если данные не проверяются?
+flag: "flag{v4ult_br0k3n_1n_3v3ry_l4y3r}"
+container_port: 5000

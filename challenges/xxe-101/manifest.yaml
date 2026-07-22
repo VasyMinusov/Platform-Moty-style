@@ -1,0 +1,9 @@
+title: "XXE: Парсер отчётов"
+category: "web"
+difficulty: "medium"
+points: 180
+description: >
+  Сервис принимает XML-отчёты и рендерит их содержимое.
+  Возможно, парсер слишком доверчив к входным данным?
+flag: "flag{xxe_0uts1de_th3_b0x}"
+container_port: 5000

@@ -1,0 +1,128 @@
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--bg-alt), transparent);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.brand-sub {
+  margin-top: 2px;
+}
+
+.shell-nav {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-bottom: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.nav-tab-code {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.nav-tab:hover {
+  color: var(--text);
+}
+
+.nav-tab.active {
+  color: var(--accent);
+  background: var(--panel);
+  border-color: var(--border-soft);
+}
+
+.nav-tab.active .nav-tab-code {
+  color: var(--accent);
+}
+
+.shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.operator-tag {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.operator-tag strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.shell-main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+@media (max-width: 720px) {
+  .shell-header {
+    padding: 14px 18px;
+    gap: 14px;
+  }
+  .shell-nav {
+    order: 3;
+    width: 100%;
+    margin-right: 0;
+  }
+  .shell-main {
+    padding: 28px 18px 60px;
+  }
+}
+
+

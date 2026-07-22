@@ -1,0 +1,9 @@
+title: "PCAP Forensics 201"
+category: "forensics"
+difficulty: "medium"
+points: 200
+description: >
+  Системный администратор поймал подозрительный фрагмент трафика.
+  Ваша задача — открыть дамп в Wireshark и найти то, что автор пытался скрыть.
+flag: "flag{w1r3sh4rk_rul3s_th3_n3t}"
+container_port: 5000

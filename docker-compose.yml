@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ctf
+      POSTGRES_PASSWORD: ctf_password_change_me
+      POSTGRES_DB: ctf
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - platform_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctf -d ctf"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    environment:
+      DATABASE_URL: postgresql+psycopg2://ctf:ctf_password_change_me@db:5432/ctf
+      JWT_SECRET: change_me_super_secret
+      CHALLENGE_PORT_RANGE_START: "30000"
+      CHALLENGE_PORT_RANGE_END: "30999"
+      CHALLENGES_DIR: /challenges
+      INSTANCE_TTL_SECONDS: "3600"
+      DOCKER_NETWORK: "ctf-platform_isolated_net"
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./challenges:/challenges:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - platform_net
+      - isolated_net
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - platform_net
+
+networks:
+  platform_net:
+    driver: bridge
+  isolated_net:
+    driver: bridge
+
+volumes:
+  db_data:

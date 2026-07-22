@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudPaste — Проверка доступности</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo">☁️</span>
+      <span class="brand-name">CloudPaste</span>
+    </div>
+    <nav>
+      <a href="/">Главная</a>
+      <a href="/about">О сервисе</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Проверьте доступность любой веб-страницы</h1>
+      <p>Корпоративный инструмент мониторинга веб-ресурсов. Введите URL, и мы покажем статус, заголовки и первые 2000 символов ответа.</p>
+    </section>
+
+    <section class="card">
+      <form id="fetchForm">
+        <div class="field">
+          <label for="url">URL страницы</label>
+          <input type="text" id="url" name="url" placeholder="https://example.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Проверить доступность</button>
+      </form>
+      <div id="loader" class="loader hidden">Проверяем…</div>
+      <div id="result" class="result hidden">
+        <div class="result-header">
+          <span id="statusBadge" class="badge"></span>
+        </div>
+        <pre id="output"></pre>
+      </div>
+      <div id="error" class="alert hidden"></div>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <h3>🚀 Быстро</h3>
+        <p>Результат за секунды.</p>
+      </div>
+      <div class="feature">
+        <h3>🛡️ Безопасно</h3>
+        <p>Мы не проверяем внутренние адреса.</p>
+      </div>
+      <div class="feature">
+        <h3>📊 Подробно</h3>
+        <p>Заголовки и тело ответа.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2024 CloudPaste Corp. Все права защищены.</p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+title: "SSRF 201"
+category: "web"
+difficulty: "medium"
+points: 200
+description: >
+  CloudPaste — корпоративный сервис проверки доступности веб-страниц.
+  Попробуйте получить доступ к внутреннему ресурсу, о котором не знают клиенты.
+flag: "flag{ssrf_cl0udp4st3_1nt3rn4l}"
+container_port: 5000

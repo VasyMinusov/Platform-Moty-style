@@ -1,0 +1,190 @@
+.writeup-editor {
+  max-width: 920px;
+}
+
+.writeup-editor .field select {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+  font-size: 14px;
+  color: var(--text);
+  width: 100%;
+  cursor: pointer;
+}
+
+.writeup-editor .field select:focus {
+  border-color: var(--accent);
+}
+
+.writeup-editor .field select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.writeup-editor textarea {
+  width: 100%;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  resize: vertical;
+  min-height: 320px;
+}
+
+.writeup-editor textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.writeup-editor .json-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--panel-alt);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--accent-dim);
+}
+
+/* ── Write-up Cards (list view) ── */
+
+.writeup-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.writeup-card:hover {
+  border-color: var(--border);
+}
+
+.writeup-card .eyebrow {
+  font-size: 10px;
+  color: var(--accent-dim);
+}
+
+.writeup-card h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.writeup-card .meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.writeup-card .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ── JSON Preview (read-only display) ── */
+
+.json-preview {
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.json-preview .json-key {
+  color: var(--info);
+}
+
+.json-preview .json-string {
+  color: var(--success);
+}
+
+.json-preview .json-number {
+  color: var(--accent);
+}
+
+/* ── Step Viewer (for future read-only view) ── */
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-item {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  position: relative;
+}
+
+.step-item::before {
+  content: attr(data-step);
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  background: var(--accent);
+  color: #1a1305;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 3px;
+}
+
+.step-item h4 {
+  font-size: 15px;
+  margin: 6px 0 8px;
+}
+
+.step-item p {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+
+.step-command {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  overflow-x: auto;
+}
+
+/* ── Empty state override ── */
+
+.writeups-empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.writeups-empty p {
+  margin: 0 0 16px;
+}
+

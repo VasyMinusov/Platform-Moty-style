@@ -1,0 +1,9 @@
+title: "Reflected XSS 101"
+category: "web"
+difficulty: "easy"
+points: 80
+description: >
+  Гостевая книга отражает введённое имя без экранирования.
+  Постройте payload, который выполнит JavaScript и покажет флаг.
+flag: "flag{xss_r3fl3ct3d_and_f0und}"
+container_port: 5000

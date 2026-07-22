@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetTools — Сетевой инструментарий</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo">🌐</span>
+      <span class="brand-name">NetTools</span>
+    </div>
+    <nav>
+      <a href="/">Инструменты</a>
+      <a href="/api/flag">API</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Сетевой инструментарий для администраторов</h1>
+      <p>Быстрая проверка whois, ping и DNS-записей прямо в браузере. Введите домен или IP и выберите инструмент.</p>
+    </section>
+
+    <section class="card">
+      <form id="toolForm">
+        <div class="field">
+          <label for="target">Цель (домен или IP)</label>
+          <input type="text" id="target" name="target" placeholder="example.com" required>
+        </div>
+        <div class="field">
+          <label for="tool">Инструмент</label>
+          <select id="tool" name="tool">
+            <option value="whois">WHOIS</option>
+            <option value="ping">Ping</option>
+            <option value="dig">DIG</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Запустить</button>
+      </form>
+      <div id="loader" class="loader hidden">Выполняем…</div>
+      <div id="error" class="alert hidden"></div>
+      <div id="result" class="result hidden">
+        <div class="result-header">
+          <span id="commandBadge" class="badge ok"></span>
+        </div>
+        <pre id="output"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2024 NetTools Solutions. Инструменты для профессионалов.</p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

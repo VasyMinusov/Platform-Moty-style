@@ -1,0 +1,9 @@
+title: "Command Injection 201"
+category: "web"
+difficulty: "medium"
+points: 250
+description: >
+  NetTools — сетевой инструментарий администратора. Проверяйте whois, ping и dig.
+  Но будьте осторожны: иногда пользовательский ввод попадает в оболочку.
+flag: "flag{cmd_1nj3ct10n_n3tt00ls}"
+container_port: 5000

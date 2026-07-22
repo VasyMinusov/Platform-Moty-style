@@ -1,0 +1,42 @@
+.admin-note {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 28px;
+  max-width: 620px;
+}
+
+.admin-note code {
+  background: var(--panel-alt);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.admin-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.admin-card h3 {
+  font-size: 18px;
+}
+
+.admin-card p {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+

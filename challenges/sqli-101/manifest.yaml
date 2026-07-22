@@ -1,0 +1,9 @@
+title: "SQL Injection 101"
+category: "web"
+difficulty: "easy"
+points: 100
+description: >
+  Простое приложение для входа в систему. Найдите способ обойти
+  проверку логина/пароля с помощью SQL-инъекции и получите флаг.
+flag: "flag{sql_1nj3ct10n_1s_2asy}"
+container_port: 5000

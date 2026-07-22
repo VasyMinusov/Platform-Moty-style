@@ -1,0 +1,9 @@
+title: "Path Traversal: Библиотека документов"
+category: "web"
+difficulty: "medium"
+points: 150
+description: >
+  Сервис документов отдаёт файлы из директории /app/docs.
+  Найдите способ прочитать файл вне разрешённой директории.
+flag: "flag{path_travers4l_pwned}"
+container_port: 5000

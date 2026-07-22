@@ -1,0 +1,10 @@
+title: "Padding Oracle 201"
+category: "crypto"
+difficulty: "medium"
+points: 300
+description: >
+  Секретный сервис шифрует данные AES-128-CBC.
+  Есть endpoint для проверки шифротекста: он отвечает лишь «valid» или «invalid».
+  Этого достаточно, чтобы полностью расшифровать флаг.
+flag: "flag{p4dd1ng_0r4cl3_4tt4ck_4w3s0m3}"
+container_port: 5000

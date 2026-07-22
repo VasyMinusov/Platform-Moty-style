@@ -1,0 +1,12 @@
+title: "Buffer Overflow 201"
+category: "pwn"
+difficulty: "medium"
+points: 300
+description: >
+  Старый бинарный сервис читает ввод через gets().
+
+  Внутри него есть скрытая функция, печатающая флаг.
+
+  Перезапишите адрес возврата и вызовите её.
+flag: "flag{b0f_r3tw1n_4_sm00th_v1ct0ry}"
+container_port: 5000

@@ -1,0 +1,9 @@
+title: "JWT Weak Secret 201"
+category: "web"
+difficulty: "medium"
+points: 200
+description: >
+  SecureNotes — сервис личных заметок. Войдите, сохраняйте заметки…
+  но кто-то оставил слабый секрет подписи JWT. Получите права администратора.
+flag: "flag{jwt_s3cr3t_1s_t00_w34k}"
+container_port: 5000

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tomcat-users PUBLIC
+        "-//Apache Software Foundation//DTD Tomcat User Database//EN"
+        "http://tomcat.apache.org/dtd/tomcat-users_1_0.dtd">
+<tomcat-users>
+  <role rolename="manager-gui"/>
+  <role rolename="manager-script"/>
+  <role rolename="manager-status"/>
+  <role rolename="admin-gui"/>
+  <role rolename="admin-script"/>
+  <user username="tomcat" password="s3cret" roles="manager-gui,manager-script,manager-status,admin-gui,admin-script"/>
+</tomcat-users>

@@ -1,0 +1,78 @@
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+
+.stat-value {
+  font-size: 28px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.section-title {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.solved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.solved-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel);
+}
+
+.solved-item:last-child {
+  border-bottom: none;
+}
+
+.solved-slug {
+  color: var(--text-faint);
+  font-size: 12px;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.solved-title {
+  flex: 1;
+}
+
+.solved-points {
+  color: var(--success);
+  font-size: 13px;
+}
+
+
+
+.profile-status {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+}

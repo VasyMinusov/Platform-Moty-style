@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureNotes — Вход</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="logo">📝</span>
+      <span class="brand-name">SecureNotes</span>
+    </div>
+    <nav>
+      <a href="/">Главная</a>
+      <a href="/">Вход</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="login-card card">
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Вход</button>
+        <button class="tab" data-tab="register">Регистрация</button>
+      </div>
+
+      <form id="loginForm" class="form">
+        <h2>Добро пожаловать в SecureNotes</h2>
+        <div class="field">
+          <label>Имя пользователя</label>
+          <input type="text" id="loginUsername" placeholder="alice" required>
+        </div>
+        <div class="field">
+          <label>Пароль</label>
+          <input type="password" id="loginPassword" placeholder="••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Войти</button>
+      </form>
+
+      <form id="registerForm" class="form hidden">
+        <h2>Создать аккаунт</h2>
+        <div class="field">
+          <label>Имя пользователя</label>
+          <input type="text" id="regUsername" placeholder="newuser" required>
+        </div>
+        <div class="field">
+          <label>Пароль</label>
+          <input type="password" id="regPassword" placeholder="••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+      </form>
+
+      <div id="error" class="alert hidden"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2024 SecureNotes Inc. Ваши мысли — под нашей защитой.</p>
+  </footer>
+  <script src="/static/auth.js"></script>
+</body>
+</html>

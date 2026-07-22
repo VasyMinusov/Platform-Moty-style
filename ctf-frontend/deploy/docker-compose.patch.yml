@@ -1,0 +1,11 @@
+# Добавьте этот сервис в services: основного docker-compose.yml
+# (в ctf-platform/), рядом с backend и nginx. Замените ./nginx/nginx.conf
+# на deploy/nginx.conf из этого репозитория, чтобы nginx начал раздавать
+# frontend вместо того, чтобы проксировать "/" напрямую на backend.
+
+  frontend:
+    build: ../ctf-frontend   # путь до этого фронтенд-репозитория
+    restart: unless-stopped
+    networks:
+      - platform_net
+    # порт наружу не нужен — nginx обращается к frontend:80 изнутри сети

