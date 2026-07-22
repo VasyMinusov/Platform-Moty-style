@@ -425,17 +425,6 @@ pnpm install
 pnpm dev
 ```
 
-### Тесты
-
-```bash
-# Backend (pytest)
-cd backend
-pytest
-
-# Frontend lint
-pnpm lint
-```
-
 ---
 
 ## Устранение неполадок
