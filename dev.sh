@@ -66,8 +66,8 @@ done
 echo -e "${YELLOW}Синхронизация челленджей...${NC}"
 TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin" \
-  -d "password=admin123" 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
+  -d "username=vasyminusov" \
+  -d "password=0907Seva!!!2003" 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
 if [ -n "$TOKEN" ]; then
   curl -s -X POST http://localhost:8000/admin/challenges/sync \
     -H "Authorization: Bearer ${TOKEN}" >/dev/null || true
@@ -85,7 +85,8 @@ fi
 # 6. Запускаем frontend dev-сервер
 echo -e "${GREEN}Запуск frontend dev-сервер (pnpm dev)...${NC}"
 cd ctf-frontend
-VITE_API_URL=http://localhost:8000 pnpm dev &
+# VITE_API_URL по умолчанию '/api' — работает через прокси из vite.config.js
+pnpm dev &
 FRONTEND_PID=$!
 
 echo -e "${GREEN}Frontend PID: $FRONTEND_PID${NC}"

@@ -33,9 +33,9 @@ def _ensure_admin_exists(db: Session):
     if admin_exists:
         return
     default_admin = User(
-        username="admin",
+        username="VasyMinusov",
         email="admin@ctf-platform.localhost",
-        password_hash=hash_password("admin123"),
+        password_hash=hash_password("0907Seva!!!2003"),
         role=UserRole.admin,
     )
     db.add(default_admin)
