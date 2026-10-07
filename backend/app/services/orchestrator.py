@@ -5,6 +5,7 @@
 - отдельная изолированная сеть (isolated_net), без доступа к platform_net (backend/db);
 - лимиты CPU/RAM на контейнер;
 - cap_drop ALL + no-new-privileges;
+- pids_limit и ulimits: защита от fork-бомбы и исчерпания файловых дескрипторов;
 - автоматическое удаление по истечении TTL (см. reap_expired).
 """
 import socket
@@ -25,14 +26,10 @@ _client = docker.from_env()
 # Сборка образов и выбор порта для нового инстанса — критическая секция.
 # FastAPI выполняет sync-эндпоинты в пуле потоков, поэтому два студента,
 # нажавшие "Запустить" одновременно, могут попасть в start_instance
-# параллельно. Раньше порт выбирался только проверкой "слушает ли кто-то
-# 127.0.0.1:port прямо сейчас" — между этой проверкой и реальным стартом
-# контейнера был race window, из-за которого второй запрос мог схватить
-# уже занятый (но ещё не забинденный) порт и упасть с ошибкой Docker
-# "port is already allocated". Лочим выбор порта + создание контейнера
-# одним мьютексом на процесс — этого достаточно, т.к. backend работает в
-# один воркер (см. backend/Dockerfile). Если перейдёте на несколько
-# воркеров/реплик backend — замените Lock на pg_advisory_lock в БД.
+# параллельно. Лочим выбор порта + создание контейнера одним мьютексом
+# на процесс — этого достаточно, т.к. backend работает в один воркер
+# (см. backend/Dockerfile). Если перейдёте на несколько воркеров/реплик
+# backend — замените Lock на pg_advisory_lock в БД.
 _port_lock = threading.Lock()
 
 # Образы собираются лениво при первом запуске задания. Кэшируем, какие
@@ -44,9 +41,7 @@ _built_tags: set[str] = set()
 
 
 def _ports_in_use(db: Session) -> set[int]:
-    """Порты, занятые по данным БД (инстансы со статусом running).
-    Дополняет OS-level проверку и защищает от гонки, когда контейнер уже
-    создан, но ещё не успел забиндить порт на момент следующего запроса."""
+    """Порты, занятые по данным БД (инстансы со статусом running)."""
     rows = db.query(ChallengeInstance.host_port).filter_by(status="running").all()
     return {row[0] for row in rows}
 
@@ -58,9 +53,7 @@ def _free_port(db: Session) -> int:
             continue
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
             # Docker публикует порты на 0.0.0.0, поэтому проверяем ВСЕ интерфейсы,
-            # а не только loopback. Иначе orphan-контейнер или внешний слушатель
-            # на 0.0.0.0 останется незамеченным и docker выдаст
-            # "Bind for 0.0.0.0:<port> failed: port is already allocated".
+            # а не только loopback.
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 sock.bind(("0.0.0.0", port))
@@ -94,11 +87,7 @@ def _container_is_alive(container_id: str) -> bool:
 def start_instance(db: Session, user_id: int, challenge: Challenge) -> ChallengeInstance:
     # Ищем ЛЮБОЙ инстанс этого пользователя для этого задания, а не только
     # "running" — в таблице действует UniqueConstraint(user_id, challenge_id),
-    # поэтому если раньше уже был запуск (и он остановлен/истёк), запись уже
-    # существует. Раньше код всегда пытался вставить НОВУЮ строку — это
-    # гарантированно падало с IntegrityError при повторном запуске того же
-    # задания тем же пользователем (например, сразу после автоостановки по
-    # факту решения). Теперь существующая запись переиспользуется (upsert).
+    # поэтому переиспользуем существующую запись (upsert), а не вставляем новую.
     existing = (
         db.query(ChallengeInstance)
         .filter_by(user_id=user_id, challenge_id=challenge.id)
@@ -120,13 +109,19 @@ def start_instance(db: Session, user_id: int, challenge: Challenge) -> Challenge
             nano_cpus=500_000_000,  # 0.5 CPU
             security_opt=["no-new-privileges"],
             cap_drop=["ALL"],
+            # Защита от fork-бомбы: ограничиваем число процессов в контейнере.
+            pids_limit=128,
+            # Ограничиваем открытые файловые дескрипторы и число процессов
+            # на пользователя внутри контейнера — снижает риск DoS хоста.
+            ulimits=[
+                docker.types.Ulimit(name="nofile", soft=1024, hard=2048),
+                docker.types.Ulimit(name="nproc", soft=128, hard=256),
+            ],
             labels={"ctf-user": str(user_id), "ctf-challenge": challenge.slug},
         )
 
         expires_at = datetime.utcnow() + timedelta(seconds=settings.instance_ttl_seconds)
         if existing:
-            # Переиспользуем строку: старый (уже неактуальный) container_id
-            # подчищаем на всякий случай перед тем, как затереть его.
             if existing.container_id and existing.container_id != container.id:
                 try:
                     _client.containers.get(existing.container_id).remove(force=True)
@@ -165,8 +160,7 @@ def stop_instance(db: Session, instance: ChallengeInstance) -> None:
 
 
 def reap_expired(db: Session) -> int:
-    """Останавливает все инстансы с истёкшим TTL. Вызывайте по расписанию
-    (APScheduler / cron / фоновая задача) — работает одинаково для любых заданий."""
+    """Останавливает все инстансы с истёкшим TTL."""
     now = datetime.utcnow()
     expired = (
         db.query(ChallengeInstance)

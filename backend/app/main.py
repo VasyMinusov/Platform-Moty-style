@@ -1,3 +1,4 @@
+import os
 import time
 
 from fastapi import FastAPI
@@ -28,27 +29,38 @@ app.include_router(lessons.router)
 
 
 def _ensure_admin_exists(db: Session):
-    """Создаёт дефолтного админа admin/admin123, если в БД ещё нет ни одного админа."""
+    """Создаёт дефолтного админа и модератора, если в БД ещё нет ни одного админа.
+    Учётные данные берутся из переменных окружения (ADMIN_USERNAME/ADMIN_PASSWORD,
+    MODERATOR_USERNAME/MODERATOR_PASSWORD), чтобы не хранить plaintext-пароли
+    в исходниках. Значения по умолчанию оставлены только для dev-запуска
+    без .env — в LAN-режиме lan-setup.sh подставит случайные пароли."""
     admin_exists = db.query(User).filter(User.role == UserRole.admin).first()
     if admin_exists:
         return
+
+    admin_username = os.environ.get("ADMIN_USERNAME", "VasyMinusov")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "0907Seva!!!2003")
+    moderator_username = os.environ.get("MODERATOR_USERNAME", "moderator")
+    moderator_password = os.environ.get("MODERATOR_PASSWORD", "moderato123")
+
     default_admin = User(
-        username="VasyMinusov",
+        username=admin_username,
         email="admin@ctf-platform.localhost",
-        password_hash=hash_password("0907Seva!!!2003"),
+        password_hash=hash_password(admin_password),
         role=UserRole.admin,
     )
     db.add(default_admin)
 
     default_moderator = User(
-        username="moderator",
-        email="moderato@ctf-platform.localhost",
-        password_hash=hash_password("moderato123"),
+        username=moderator_username,
+        email="moderator@ctf-platform.localhost",
+        password_hash=hash_password(moderator_password),
         role=UserRole.moderator,
     )
     db.add(default_moderator)
     db.commit()
-    print("[INIT] Создан дефолтный администратор: admin / admin123")
+    print(f"[INIT] Создан дефолтный администратор: {admin_username}")
+    print(f"[INIT] Создан дефолтный модератор: {moderator_username}")
 
 
 def _run_migrations():
@@ -91,4 +103,3 @@ def on_startup():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-

@@ -48,10 +48,13 @@ fi
 echo -e "${GREEN}Запуск docker compose (db, backend, nginx)...${NC}"
 docker compose up -d --build
 
-# 3. Ждём, пока backend станет доступен
+# 3. Ждём, пока backend станет доступен.
+# Порт 8000 наружу не публикуется (см. docker-compose.yml) — backend доступен
+# только внутри platform_net. Поэтому health-check делаем через `docker compose
+# exec` внутри самого контейнера, а не через localhost:8000.
 echo -e "${YELLOW}Ожидание backend...${NC}"
 for i in $(seq 1 30); do
-  if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+  if docker compose exec -T backend curl -sf http://localhost:8000/health >/dev/null 2>&1; then
     echo -e "${GREEN}Backend готов.${NC}"
     break
   fi
@@ -62,14 +65,26 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-# 4. Синхронизируем челленджи (требуется админ)
+# 4. Синхронизируем челленджи.
+# Логин идёт через nginx (http://localhost/api/...), учётные данные берутся из
+# .env — там lan-setup.sh генерирует случайный ADMIN_PASSWORD.
 echo -e "${YELLOW}Синхронизация челленджей...${NC}"
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+ADMIN_USER="${ADMIN_USERNAME:-VasyMinusov}"
+ADMIN_PASS="${ADMIN_PASSWORD:-0907Seva!!!2003}"
+
+TOKEN=$(curl -s -X POST http://localhost/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=vasyminusov" \
-  -d "password=0907Seva!!!2003" 2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
+  --data-urlencode "username=${ADMIN_USER}" \
+  --data-urlencode "password=${ADMIN_PASS}" \
+  2>/dev/null | python3 -c "import sys, json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
 if [ -n "$TOKEN" ]; then
-  curl -s -X POST http://localhost:8000/admin/challenges/sync \
+  curl -s -X POST http://localhost/api/admin/challenges/sync \
     -H "Authorization: Bearer ${TOKEN}" >/dev/null || true
   echo -e "${GREEN}Челленджи синхронизированы.${NC}"
 else
@@ -89,7 +104,14 @@ cd ctf-frontend
 pnpm dev &
 FRONTEND_PID=$!
 
+# Показываем LAN IP (если есть), чтобы было понятно, куда идти коллегам
+if [ -f ../.env ]; then
+  LAN_IP=$(grep -E '^PUBLIC_HOST=' ../.env 2>/dev/null | cut -d= -f2- || true)
+fi
 echo -e "${GREEN}Frontend PID: $FRONTEND_PID${NC}"
-echo -e "${GREEN}Откройте http://localhost:5173${NC}"
+echo -e "${GREEN}У себя:    http://localhost:5173${NC}"
+if [ -n "${LAN_IP:-}" ] && [ "${LAN_IP}" != "localhost" ]; then
+  echo -e "${GREEN}Коллегам:  http://${LAN_IP}:5173${NC}"
+fi
 
 wait "$FRONTEND_PID"
