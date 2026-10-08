@@ -2,15 +2,26 @@
 
 Сеть создаётся при публикации (draft -> announced), удаляется при
 финальном удалении соревнования. Имя: ctf-comp-{slug}_net.
-Использует тот же docker-клиент, что orchestrator.
+
+Docker-клиент создаётся лениво: на этапе сборки образа backend сокет
+недоступен, а импорт модуля не должен падать.
 """
+from typing import Optional
+
 import docker
 from docker.errors import APIError, NotFound
 
 from ..models_competitions import Competition
 
 
-_client = docker.from_env()
+_docker_client = None
+
+
+def _get_client():
+    global _docker_client
+    if _docker_client is None:
+        _docker_client = docker.from_env()
+    return _docker_client
 
 
 def network_name(slug: str) -> str:
@@ -18,19 +29,19 @@ def network_name(slug: str) -> str:
 
 
 def ensure_network(competition: Competition) -> str:
+    client = _get_client()
     name = network_name(competition.slug)
     try:
-        _client.networks.get(name)
+        client.networks.get(name)
         return name
     except NotFound:
         pass
 
-    # isolated = True по умолчанию, allow_internet — снимает internal
     cfg = competition.network_config or {}
     internal = bool(cfg.get("isolated", True)) and not bool(cfg.get("allow_internet", False))
 
     try:
-        _client.networks.create(
+        client.networks.create(
             name,
             driver="bridge",
             internal=internal,
@@ -44,12 +55,12 @@ def ensure_network(competition: Competition) -> str:
 
 
 def remove_network(slug: str) -> None:
+    client = _get_client()
     try:
-        net = _client.networks.get(network_name(slug))
+        net = client.networks.get(network_name(slug))
     except NotFound:
         return
     try:
         net.remove()
     except APIError:
-        # Сеть занята контейнерами — не валим операцию.
         pass

@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, SessionLocal
 from .routers import (
     auth, challenges, admin, writeups, lessons,
-    competitions, competitions_teams,
+    competitions, competitions_teams, competitions_challenges,
+    competitions_instances, competitions_leaderboard,
+    competitions_dashboard, competitions_appeals, competitions_ws,
 )
 from .services import challenge_registry
 from .models import User, UserRole
@@ -37,6 +39,15 @@ app.include_router(lessons.router)
 app.include_router(competitions.router)
 app.include_router(competitions.admin_router)
 app.include_router(competitions_teams.router)
+app.include_router(competitions_challenges.router)
+app.include_router(competitions_challenges.admin_router)
+app.include_router(competitions_instances.router)
+app.include_router(competitions_leaderboard.router)
+app.include_router(competitions_dashboard.router)
+app.include_router(competitions_appeals.router)
+app.include_router(competitions_appeals.admin_router)
+app.include_router(competitions_ws.router)
+
 # ── Alembic ──────────────────────────────────────────────────────────
 
 def _alembic_config():

@@ -235,6 +235,16 @@ def transition_status(
                 payload={"error": str(e)},
             )
 
+    if target in (CompetitionStatus.finished, CompetitionStatus.cancelled):
+        # Останавливаем все инстансы соревнования.
+        from . import orchestrator
+        stopped = orchestrator.stop_all_for_competition(db, c.id)
+        competition_audit.log_action(
+            db, competition_id=c.id, actor=actor,
+            action="competition.instances_reaped",
+            payload={"stopped": stopped},
+        )
+
     competition_audit.log_action(
         db,
         competition_id=c.id,

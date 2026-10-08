@@ -8,19 +8,21 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 12
 
     challenges_dir: str = "/challenges"
+    # Подпапка внутри challenges_dir, куда распаковываются задания соревнований.
+    # Итоговый путь: {challenges_dir}/{competitions_subdir}/{comp_slug}/{ch_slug}
+    competitions_subdir: str = "competitions"
+
     challenge_port_range_start: int = 30000
     challenge_port_range_end: int = 30999
     instance_ttl_seconds: int = 3600
 
     docker_network: str = "ctf-platform_isolated_net"
 
-    # Хост, по которому пользователи достучатся до опубликованного порта
-    # инстанса задания (см. routers/challenges.py -> start_challenge).
-    # Раньше это было захардкожено как "host.ctf.example" — ссылка была
-    # нерабочей "из коробки". Для локального запуска оставьте localhost,
-    # для сервера — укажите его публичный домен/IP через переменную
-    # окружения PUBLIC_HOST.
     public_host: str = "localhost"
+
+    # Лимиты ZIP-загрузки задания соревнования.
+    competition_zip_max_bytes: int = 500 * 1024 * 1024
+    competition_zip_max_files: int = 5000
 
     class Config:
         env_file = ".env"

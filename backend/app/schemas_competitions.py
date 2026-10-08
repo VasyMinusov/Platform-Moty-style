@@ -450,3 +450,201 @@ class TeamSummary(BaseModel):
     captain_username: str
     status: str
     member_count: int
+
+# ══════════════════════════════════════════════════════════════════════
+# Competition challenges
+# ══════════════════════════════════════════════════════════════════════
+
+class CompetitionChallengeFileOut(BaseModel):
+    id: int
+    filename: str
+    size: int
+    mime: Optional[str] = None
+    sha256: str
+    is_public: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CompetitionChallengeOut(BaseModel):
+    id: int
+    competition_id: int
+    slug: str
+    title: str
+    kind: str
+    type: str
+    category: str
+    difficulty: str
+    description_md: str
+    points: int
+    dynamic_flag_strategy: str
+    container_port: Optional[int] = None
+    order_index: int
+    visibility: str
+    hints_json: list
+    dependencies_json: list
+    metadata_json: dict
+    enabled: bool
+    build_status: str
+    build_log: str
+    uploaded_at: datetime
+    # Для фронта: сколько подсказок уже куплено текущим пользователем
+    purchased_hints: list[int] = []
+    # Для фронта: решено ли текущим пользователем/командой
+    solved: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class CompetitionChallengeUpdate(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: Optional[Literal["easy", "medium", "hard", "insane"]] = None
+    description_md: Optional[str] = None
+    points: Optional[int] = None
+    dynamic_flag_strategy: Optional[
+        Literal["static", "per_user", "per_team", "per_instance"]
+    ] = None
+    container_port: Optional[int] = None
+    order_index: Optional[int] = None
+    visibility: Optional[Literal["hidden", "visible_after_start", "visible"]] = None
+    hints_json: Optional[list] = None
+    dependencies_json: Optional[list] = None
+    metadata_json: Optional[dict] = None
+    enabled: Optional[bool] = None
+    # Новый флаг (опционально) — перехэшируется на сервере.
+    flag: Optional[str] = None
+
+
+class PromoteChallengeRequest(BaseModel):
+    """Промоушен задания соревнования в глобальное.
+    Новый slug опционален — если не указан, используется slug задания."""
+    new_slug: Optional[str] = None
+    points: Optional[int] = None
+    enabled: bool = True
+
+
+class BuildStatusOut(BaseModel):
+    challenge_id: int
+    slug: str
+    build_status: str
+    build_log: str
+    updated_at: datetime
+
+# ══════════════════════════════════════════════════════════════════════
+# Instances / submit / hints
+# ══════════════════════════════════════════════════════════════════════
+
+class CompetitionInstanceOut(BaseModel):
+    challenge_slug: str
+    url: str
+    expires_at: datetime
+
+
+class CompetitionFlagSubmit(BaseModel):
+    flag: str
+
+
+class CompetitionSubmitResult(BaseModel):
+    correct: bool
+    message: str
+    points_awarded: Optional[int] = None
+    is_first_blood: bool = False
+
+
+class HintPurchaseOut(BaseModel):
+    hint_index: int
+    text: str
+    cost_paid: int
+    purchased_at: datetime
+
+# ══════════════════════════════════════════════════════════════════════
+# Leaderboard
+# ══════════════════════════════════════════════════════════════════════
+
+class LeaderboardRowOut(BaseModel):
+    rank: int
+    id: int
+    name: str
+    score: int
+    solves_count: int
+    last_solve_at: Optional[datetime] = None
+    first_solve_at: Optional[datetime] = None
+    is_team: bool = False
+    members: list[str] = []
+
+
+class LeaderboardSnapshotOut(BaseModel):
+    competition_id: int
+    competition_slug: str
+    mode: str
+    generated_at: datetime
+    individuals: list[LeaderboardRowOut] = []
+    teams: list[LeaderboardRowOut] = []
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Dashboard
+# ══════════════════════════════════════════════════════════════════════
+
+class DashboardOut(BaseModel):
+    competition_id: int
+    slug: str
+    generated_at: datetime
+    participants: dict
+    challenges: dict
+    solves: dict
+    score_distribution: list[dict]
+    solves_timeline: list[dict]
+    first_bloods: list[dict]
+    top_solvers: list[dict]
+    category_activity: list[dict]
+    anomalies: list[dict]
+
+
+class ScoreAdjustRequest(BaseModel):
+    user_id: Optional[int] = None
+    team_id: Optional[int] = None
+    delta: int
+    comment: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _check_owner(self):
+        if (self.user_id is None) == (self.team_id is None):
+            raise ValueError("Specify exactly one of user_id / team_id")
+        return self
+
+
+class ScoreAdjustResult(BaseModel):
+    delta: int
+    total: int
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Appeals
+# ══════════════════════════════════════════════════════════════════════
+
+class AppealCreate(BaseModel):
+    message: str = Field(min_length=5, max_length=4000)
+    challenge_id: Optional[int] = None
+
+
+class AppealResolve(BaseModel):
+    status: Literal["accepted", "rejected"]
+    resolution: Optional[str] = None
+
+
+class AppealOut(BaseModel):
+    id: int
+    competition_id: int
+    user_id: int
+    username: str
+    challenge_id: Optional[int] = None
+    message: str
+    status: str
+    resolved_by: Optional[int] = None
+    resolved_at: Optional[datetime] = None
+    resolution: Optional[str] = None
+    created_at: datetime
