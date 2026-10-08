@@ -1,0 +1,391 @@
+/* Общий CSS для всех админских страниц соревнований */
+
+.adm-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.adm-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-toolbar input[type="search"],
+.adm-toolbar input[type="text"] {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 240px;
+}
+
+.adm-toolbar input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.adm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.adm-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-card h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.adm-card p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.adm-table-wrap {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.adm-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.adm-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+
+.adm-table tr:last-child td {
+  border-bottom: none;
+}
+
+.adm-table .mono {
+  font-family: var(--font-mono);
+}
+
+.adm-table .actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.adm-btn-mini {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.adm-btn-mini:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.adm-btn-mini:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.adm-btn-mini.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.adm-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.adm-badge.status-running { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.adm-badge.status-paused { color: var(--text-dim); }
+.adm-badge.status-finished { color: var(--success); border-color: var(--success); }
+.adm-badge.status-cancelled { color: var(--danger); border-color: var(--danger); }
+.adm-badge.status-registration_open { color: var(--accent); border-color: var(--accent); }
+.adm-badge.status-registration_closed { color: var(--info); border-color: var(--info); }
+.adm-badge.status-announced { color: var(--info); border-color: var(--info); }
+.adm-badge.status-draft { color: var(--text-faint); }
+
+.adm-badge.build-ready { color: var(--success); border-color: var(--success); }
+.adm-badge.build-building { color: var(--accent); border-color: var(--accent); }
+.adm-badge.build-failed { color: var(--danger); border-color: var(--danger); }
+.adm-badge.build-pending { color: var(--text-faint); }
+
+/* ── Wizard ── */
+
+.wiz {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+}
+
+.wiz-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 100px;
+  align-self: start;
+}
+
+.wiz-step-btn {
+  text-align: left;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wiz-step-btn:hover { color: var(--text); }
+.wiz-step-btn.active {
+  color: var(--accent);
+  background: var(--panel-alt);
+  border-color: var(--border-soft);
+}
+.wiz-step-btn.done::before {
+  content: '✓ ';
+  color: var(--success);
+}
+
+.wiz-body {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 24px 26px;
+}
+
+.wiz-body h2 {
+  font-size: 20px;
+  margin: 0 0 18px;
+}
+
+.wiz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.wiz-field label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.wiz-field input,
+.wiz-field select,
+.wiz-field textarea {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.wiz-field textarea {
+  min-height: 100px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.wiz-field input:focus,
+.wiz-field select:focus,
+.wiz-field textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.wiz-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.wiz-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .wiz { grid-template-columns: 1fr; }
+  .wiz-steps { position: static; flex-direction: row; flex-wrap: wrap; }
+  .wiz-row, .wiz-row-3 { grid-template-columns: 1fr; }
+}
+
+.wiz-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ── ZIP-загрузка ── */
+
+.zip-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.zip-drop.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.zip-drop strong { color: var(--text); }
+
+.build-log {
+  background: #0b0e12;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Dashboard ── */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.dash-stat {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-stat .value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.dash-stat .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.dash-panel {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+
+.dash-panel h3 {
+  font-size: 15px;
+  margin: 0 0 14px;
+}
+
+.dash-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 140px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.dash-bar {
+  flex: 1;
+  min-width: 4px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.dash-bar:hover { opacity: 1; }
+
+.dash-anomaly {
+  border-left: 3px solid var(--danger);
+  background: var(--danger-soft);
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.dash-anomaly .type {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--danger);
+  letter-spacing: 0.1em;
+  margin-right: 8px;
+}

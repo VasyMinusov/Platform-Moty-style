@@ -16,6 +16,22 @@ import LessonsListPage from './pages/LessonsListPage'
 import LessonDetailPage from './pages/LessonDetailPage'
 import LessonEditorPage from './pages/LessonEditorPage'
 
+// Соревнования — публичные страницы
+import CompetitionsListPage from './pages/CompetitionsListPage'
+import CompetitionDetailPage from './pages/CompetitionDetailPage'
+import CompetitionTeamPage from './pages/CompetitionTeamPage'
+
+// Соревнования — админские страницы
+import AdminCompetitionsListPage from './pages/admin/AdminCompetitionsListPage'
+import AdminCompetitionEditorPage from './pages/admin/AdminCompetitionEditorPage'
+import AdminCompetitionApplicationsPage from './pages/admin/AdminCompetitionApplicationsPage'
+import AdminCompetitionChallengesPage from './pages/admin/AdminCompetitionChallengesPage'
+import AdminCompetitionTeamsPage from './pages/admin/AdminCompetitionTeamsPage'
+import AdminCompetitionDashboardPage from './pages/admin/AdminCompetitionDashboardPage'
+import AdminCompetitionAppealsPage from './pages/admin/AdminCompetitionAppealsPage'
+
+// ── Гварды ──────────────────────────────────────────────────────────
+
 function AdminRoute({ children }) {
   const { isAuthenticated, isAdmin } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
@@ -23,9 +39,10 @@ function AdminRoute({ children }) {
   return children
 }
 
-// Модератор и админ: просмотр пользователей, ведение библиотеки занятий.
-// Проверка идёт напрямую по role, а не через производные поля контекста —
-// так гвард не ломается, если клиент обновился частично.
+// Модератор и админ: просмотр пользователей, ведение библиотеки занятий,
+// управление соревнованиями. Проверка идёт напрямую по role, а не через
+// производные поля контекста — так гвард не ломается, если клиент
+// обновился частично.
 function StaffRoute({ children }) {
   const { isAuthenticated, role } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
@@ -40,14 +57,18 @@ function LessonEditorRoute({ children }) {
   return children
 }
 
+// ── Приложение ──────────────────────────────────────────────────────
+
 export default function App() {
   const { isAuthenticated } = useAuth()
 
   return (
     <Routes>
+      {/* Публичные auth-страницы */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
+      {/* Задания */}
       <Route
         path="/challenges"
         element={
@@ -58,6 +79,8 @@ export default function App() {
           </RequireAuth>
         }
       />
+
+      {/* Профиль */}
       <Route
         path="/profile"
         element={
@@ -68,26 +91,40 @@ export default function App() {
           </RequireAuth>
         }
       />
+
+      {/* Соревнования — публичные */}
       <Route
-        path="/admin"
+        path="/competitions"
         element={
-          <AdminRoute>
+          <RequireAuth>
             <Layout>
-              <AdminPage />
+              <CompetitionsListPage />
             </Layout>
-          </AdminRoute>
+          </RequireAuth>
         }
       />
       <Route
-        path="/admin/writeups"
+        path="/competitions/:slug"
         element={
-          <AdminRoute>
+          <RequireAuth>
             <Layout>
-              <WriteupsPage />
+              <CompetitionDetailPage />
             </Layout>
-          </AdminRoute>
+          </RequireAuth>
         }
       />
+      <Route
+        path="/competitions/:slug/team"
+        element={
+          <RequireAuth>
+            <Layout>
+              <CompetitionTeamPage />
+            </Layout>
+          </RequireAuth>
+        }
+      />
+
+      {/* Write-ups */}
       <Route
         path="/writeups"
         element={
@@ -108,6 +145,8 @@ export default function App() {
           </RequireAuth>
         }
       />
+
+      {/* Пользователи (модератор/админ) */}
       <Route
         path="/users"
         element={
@@ -118,6 +157,8 @@ export default function App() {
           </StaffRoute>
         }
       />
+
+      {/* Библиотека занятий */}
       <Route
         path="/lessons"
         element={
@@ -158,7 +199,116 @@ export default function App() {
           </LessonEditorRoute>
         }
       />
-      <Route path="/" element={<Navigate to={isAuthenticated ? '/challenges' : '/login'} replace />} />
+
+      {/* ── Админка (базовая) ── */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <Layout>
+              <AdminPage />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/writeups"
+        element={
+          <AdminRoute>
+            <Layout>
+              <WriteupsPage />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+
+      {/* ── Админка соревнований (модератор и админ) ── */}
+      <Route
+        path="/admin/competitions"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionsListPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/new"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionEditorPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/edit"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionEditorPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/applications"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionApplicationsPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/challenges"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionChallengesPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/teams"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionTeamsPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/dashboard"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionDashboardPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+      <Route
+        path="/admin/competitions/:slug/appeals"
+        element={
+          <StaffRoute>
+            <Layout>
+              <AdminCompetitionAppealsPage />
+            </Layout>
+          </StaffRoute>
+        }
+      />
+
+      {/* Корень и 404 */}
+      <Route
+        path="/"
+        element={<Navigate to={isAuthenticated ? '/challenges' : '/login'} replace />}
+      />
       <Route
         path="*"
         element={
@@ -174,4 +324,3 @@ export default function App() {
     </Routes>
   )
 }
-

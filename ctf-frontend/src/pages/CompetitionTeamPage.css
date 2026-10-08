@@ -1,0 +1,121 @@
+.team-join-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.team-join-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+}
+
+.team-join-card h3 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.team-panel {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+}
+
+.team-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.team-head h2 {
+  font-size: 22px;
+  margin: 0;
+  flex: 1;
+}
+
+.team-invite-code {
+  padding: 8px 14px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 18px;
+  display: inline-block;
+}
+
+.team-members {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+.team-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.team-member:last-child { border-bottom: none; }
+
+.team-member .role-tag,
+.team-member .status-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+}
+
+.team-member.status-accepted .status-tag {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.team-member.status-invited .status-tag {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.team-member > span:first-child {
+  flex: 1;
+}
+
+.team-invite-block {
+  margin-top: 16px;
+}
+
+.team-invite-row {
+  display: flex;
+  gap: 10px;
+}
+
+.team-invite-row input {
+  flex: 1;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.team-invite-row input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.team-danger {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}

@@ -7,19 +7,21 @@ const NetworkBackground = lazy(() => import('./NetworkBackground'))
 
 const NAV_ITEMS = [
   { to: '/challenges', label: 'Задания', code: '01' },
-  { to: '/profile', label: 'Досье', code: '02' },
-  { to: '/writeups', label: 'Write‑ups', code: '03' },
-  { to: '/lessons', label: 'Библиотека', code: '04' },
+  { to: '/competitions', label: 'Соревнования', code: '02' },
+  { to: '/profile', label: 'Досье', code: '03' },
+  { to: '/writeups', label: 'Write‑ups', code: '04' },
+  { to: '/lessons', label: 'Библиотека', code: '05' },
 ]
 
 // Модератор и админ: просмотр пользователей
 const STAFF_ITEMS = [
-  { to: '/users', label: 'Пользователи', code: '05' },
+  { to: '/users', label: 'Пользователи', code: '06' },
+  { to: '/admin/competitions', label: 'Соревнования', code: '07' },
 ]
 
 const ADMIN_ITEMS = [
-  { to: '/admin', label: 'Админ', code: '06' },
-  { to: '/admin/writeups', label: 'Управление', code: '07' },
+  { to: '/admin', label: 'Админ', code: '08' },
+  { to: '/admin/writeups', label: 'Управление', code: '09' },
 ]
 
 export default function Layout({ children }) {

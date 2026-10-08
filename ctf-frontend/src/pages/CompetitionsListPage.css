@@ -1,0 +1,95 @@
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.comp-card {
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+  position: relative;
+}
+
+.comp-card:hover {
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+
+.comp-card.status-running {
+  border-color: rgba(232, 163, 61, 0.4);
+}
+
+.comp-card.status-finished {
+  opacity: 0.75;
+}
+
+.comp-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.comp-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.comp-status-draft { color: var(--text-faint); }
+.comp-status-announced { color: var(--info); border-color: var(--info); }
+.comp-status-registration_open { color: var(--accent); border-color: var(--accent); }
+.comp-status-registration_closed { color: var(--info); border-color: var(--info); }
+.comp-status-running { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.comp-status-paused { color: var(--text-dim); }
+.comp-status-finished { color: var(--success); border-color: var(--success); }
+.comp-status-cancelled { color: var(--danger); border-color: var(--danger); }
+
+.comp-mode {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.comp-title {
+  font-size: 18px;
+  margin: 4px 0 0;
+  color: var(--text);
+}
+
+.comp-summary {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+  line-height: 1.5;
+  min-height: 38px;
+}
+
+.comp-dates {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
+.comp-countdown {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.comp-team-size {
+  font-size: 11px;
+  color: var(--text-faint);
+}
