@@ -9,3 +9,4 @@ passlib[bcrypt]==1.7.4
 docker==7.1.0
 pyyaml==6.0.1
 python-multipart==0.0.9
+alembic==1.13.2

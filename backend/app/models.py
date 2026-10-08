@@ -2,7 +2,8 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, UniqueConstraint, Text
+    Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, UniqueConstraint, Text,
+    Index, text,
 )
 from sqlalchemy.orm import relationship
 
@@ -55,7 +56,6 @@ class Challenge(Base):
 
 class ChallengeInstance(Base):
     __tablename__ = "challenge_instances"
-    __table_args__ = (UniqueConstraint("user_id", "challenge_id", name="uq_user_challenge"),)
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -66,8 +66,51 @@ class ChallengeInstance(Base):
     started_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
 
+    # ── Поля модуля «Соревнования» (nullable, обратная совместимость) ──
+    competition_id = Column(
+        Integer,
+        ForeignKey("competitions.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    team_id = Column(
+        Integer,
+        ForeignKey("competition_teams.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    challenge_kind = Column(String(16), default="docker", nullable=False)
+    dynamic_flag_hash = Column(String(255), nullable=True)
+
     user = relationship("User", back_populates="instances")
     challenge = relationship("Challenge", back_populates="instances")
+
+    # Старый UniqueConstraint("user_id", "challenge_id") заменён на три
+    # partial unique index'а — они допускают одновременное существование
+    # глобального инстанса и инстансов в разных соревнованиях.
+    __table_args__ = (
+        Index(
+            "uq_ci_global",
+            "user_id",
+            "challenge_id",
+            unique=True,
+            postgresql_where=text("competition_id IS NULL"),
+        ),
+        Index(
+            "uq_ci_comp_user",
+            "competition_id",
+            "challenge_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("competition_id IS NOT NULL AND team_id IS NULL"),
+        ),
+        Index(
+            "uq_ci_comp_team",
+            "competition_id",
+            "challenge_id",
+            "team_id",
+            unique=True,
+            postgresql_where=text("competition_id IS NOT NULL AND team_id IS NOT NULL"),
+        ),
+    )
 
 
 class Solve(Base):
@@ -109,3 +152,9 @@ class Lesson(Base):
 
     author = relationship("User", back_populates="lessons")
 
+
+# ── Модуль «Соревнования» ──
+# Импорт в самом конце файла, чтобы все модели выше уже были определены.
+# Это гарантирует, что Base.metadata соберёт и новые таблицы, и Alembic,
+# и Base.metadata.create_all увидят единую картину.
+from . import models_competitions  # noqa: E402,F401
