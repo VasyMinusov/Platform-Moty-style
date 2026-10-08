@@ -60,6 +60,31 @@ def create_appeal(
     )
     db.commit()
     db.refresh(appeal)
+
+    # ── Уведомление модераторам соревнования и админам ────────────────
+    from . import notification_service
+
+    preview = message.strip()
+    if len(preview) > 140:
+        preview = preview[:137] + "…"
+
+    notification_service.push_to_competition_staff(
+        db,
+        competition=comp,
+        type="appeal.created",
+        title="Новая апелляция",
+        message=f"{user.username}: {preview}",
+        level="info",
+        link=f"/admin/competitions/{comp.slug}/appeals",
+        payload={
+            "appeal_id": appeal.id,
+            "user_id": user.id,
+            "username": user.username,
+            "challenge_id": challenge_id,
+            "competition_id": comp.id,
+        },
+    )
+
     return appeal
 
 
@@ -111,4 +136,38 @@ def resolve_appeal(
     )
     db.commit()
     db.refresh(appeal)
+
+    # ── Уведомление автору апелляции ──────────────────────────────────
+    from . import notification_service
+
+    link = f"/competitions/{comp.slug}"
+    if status == "accepted":
+        notification_service.push(
+            db, user_id=appeal.user_id,
+            type="appeal.accepted",
+            title="Апелляция принята",
+            message=resolution or comp.title,
+            level="success",
+            link=link,
+            payload={
+                "appeal_id": appeal.id,
+                "competition_id": comp.id,
+                "challenge_id": appeal.challenge_id,
+            },
+        )
+    else:  # rejected
+        notification_service.push(
+            db, user_id=appeal.user_id,
+            type="appeal.rejected",
+            title="Апелляция отклонена",
+            message=resolution or comp.title,
+            level="danger",
+            link=link,
+            payload={
+                "appeal_id": appeal.id,
+                "competition_id": comp.id,
+                "challenge_id": appeal.challenge_id,
+            },
+        )
+
     return appeal

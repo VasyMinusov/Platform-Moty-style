@@ -489,14 +489,14 @@ class CompetitionChallengeOut(BaseModel):
     build_status: str
     build_log: str
     uploaded_at: datetime
-    # Для фронта: сколько подсказок уже куплено текущим пользователем
+    # Публичные файлы задания (для kind=static — обязательны).
+    files: list["CompetitionChallengeFileOut"] = []
     purchased_hints: list[int] = []
-    # Для фронта: решено ли текущим пользователем/командой
     solved: bool = False
 
     class Config:
         from_attributes = True
-
+        
 
 class CompetitionChallengeUpdate(BaseModel):
     title: Optional[str] = None

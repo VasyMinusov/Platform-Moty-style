@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ApiError } from '../api/client'
+import { api, ApiError, downloadAndSave } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationsContext'
 import { useCompetitionStream } from '../api/competitionsStream'
@@ -17,9 +17,20 @@ const TABS = [
 function formatDt(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('ru-RU', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
+}
+
+function formatSize(bytes) {
+  if (bytes === null || bytes === undefined) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 export default function CompetitionDetailPage() {
@@ -37,7 +48,9 @@ export default function CompetitionDetailPage() {
 
   const isStaff = role === 'admin' || role === 'moderator'
 
-  useEffect(() => { load() }, [slug])
+  useEffect(() => {
+    load()
+  }, [slug])
 
   async function load() {
     setLoading(true)
@@ -54,7 +67,9 @@ export default function CompetitionDetailPage() {
       setMyTeam(team)
       setInvitations(invs || [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить соревнование')
+      setError(
+        err instanceof ApiError ? err.message : 'Не удалось загрузить соревнование',
+      )
     } finally {
       setLoading(false)
     }
@@ -84,7 +99,10 @@ export default function CompetitionDetailPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link to="/competitions" className="btn">← К списку</Link>
           {isStaff && (
-            <Link to={`/admin/competitions/${comp.slug}/edit`} className="btn btn-primary">
+            <Link
+              to={`/admin/competitions/${comp.slug}/edit`}
+              className="btn btn-primary"
+            >
               Редактировать
             </Link>
           )}
@@ -97,12 +115,17 @@ export default function CompetitionDetailPage() {
         </span>
         <span>·</span>
         <span>
-          {comp.mode === 'individual' ? 'индивидуальное'
-            : comp.mode === 'team' ? 'командное'
-            : 'индивид.+команды'}
+          {comp.mode === 'individual'
+            ? 'индивидуальное'
+            : comp.mode === 'team'
+              ? 'командное'
+              : 'индивид.+команды'}
         </span>
         <span>·</span>
-        <span>регистрация: {formatDt(comp.registration_opens_at)} → {formatDt(comp.registration_closes_at)}</span>
+        <span>
+          регистрация: {formatDt(comp.registration_opens_at)} →{' '}
+          {formatDt(comp.registration_closes_at)}
+        </span>
         <span>·</span>
         <span>старт: {formatDt(comp.starts_at)}</span>
         <span>·</span>
@@ -122,11 +145,15 @@ export default function CompetitionDetailPage() {
       </div>
 
       {tab === 'overview' && (
-        <OverviewTab comp={comp} myApp={myApp} myTeam={myTeam} onReload={load} push={push} />
+        <OverviewTab
+          comp={comp}
+          myApp={myApp}
+          myTeam={myTeam}
+          onReload={load}
+          push={push}
+        />
       )}
-      {tab === 'challenges' && (
-        <ChallengesTab slug={slug} push={push} />
-      )}
+      {tab === 'challenges' && <ChallengesTab slug={slug} push={push} />}
       {tab === 'leaderboard' && (
         <LeaderboardTab slug={slug} token={token} push={push} />
       )}
@@ -156,11 +183,12 @@ function OverviewTab({ comp, myApp, myTeam, onReload, push }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
 
-  const canApply = isAuthenticated
-    && comp.status === 'registration_open'
-    && (!myApp || ['withdrawn', 'rejected'].includes(myApp.status))
-    && !myTeam
-    && comp.mode !== 'team'
+  const canApply =
+    isAuthenticated &&
+    comp.status === 'registration_open' &&
+    (!myApp || ['withdrawn', 'rejected'].includes(myApp.status)) &&
+    !myTeam &&
+    comp.mode !== 'team'
 
   async function apply() {
     setBusy(true)
@@ -224,7 +252,9 @@ function ChallengesTab({ slug, push }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => { load() }, [slug])
+  useEffect(() => {
+    load()
+  }, [slug])
 
   async function load() {
     setLoading(true)
@@ -232,13 +262,17 @@ function ChallengesTab({ slug, push }) {
     try {
       setItems(await api.listCompetitionChallenges(slug))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить задания')
+      setError(
+        err instanceof ApiError ? err.message : 'Не удалось загрузить задания',
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  if (loading) {
+    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  }
   if (error) return <div className="alert">{error}</div>
   if (items.length === 0) {
     return (
@@ -271,38 +305,48 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [purchased, setPurchased] = useState([])
+  const [downloading, setDownloading] = useState(null)
 
   useEffect(() => {
     if (expanded && challenge.hints_json?.length) {
-      api.listPurchasedHints(slug, challenge.slug)
+      api
+        .listPurchasedHints(slug, challenge.slug)
         .then(setPurchased)
         .catch(() => setPurchased([]))
     }
   }, [expanded, slug, challenge.slug, challenge.hints_json])
 
   async function start() {
-    setError(null); setBusy(true)
+    setError(null)
+    setBusy(true)
     try {
       const data = await api.startCompetitionChallenge(slug, challenge.slug)
       setInstance(data)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось запустить')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function stop() {
-    setError(null); setBusy(true)
+    setError(null)
+    setBusy(true)
     try {
       await api.stopCompetitionChallenge(slug, challenge.slug)
       setInstance(null)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось остановить')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function submit(e) {
     e.preventDefault()
-    setError(null); setResult(null); setBusy(true)
+    setError(null)
+    setResult(null)
+    setBusy(true)
     try {
       const data = await api.submitCompetitionFlag(slug, challenge.slug, flag)
       setResult(data)
@@ -320,11 +364,14 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка проверки')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function buyHint(idx) {
-    setError(null); setBusy(true)
+    setError(null)
+    setBusy(true)
     try {
       const h = await api.buyHint(slug, challenge.slug, idx)
       setPurchased((p) => [...p, h])
@@ -335,15 +382,37 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
         level: 'warning',
       })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Не удалось купить подсказку')
-    } finally { setBusy(false) }
+      setError(
+        e instanceof ApiError ? e.message : 'Не удалось купить подсказку',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function downloadFile(f) {
+    setError(null)
+    setDownloading(f.id)
+    try {
+      await downloadAndSave(
+        `/competitions/${slug}/challenges/${challenge.slug}/files/${f.id}`,
+        f.filename,
+      )
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Не удалось скачать файл')
+    } finally {
+      setDownloading(null)
+    }
   }
 
   const hintsArr = challenge.hints_json || []
   const purchasedIdx = new Set(purchased.map((p) => p.hint_index))
+  const filesArr = challenge.files || []
 
   return (
-    <article className={`case-card${challenge.solved ? ' solved' : ''}${expanded ? ' open' : ''}`}>
+    <article
+      className={`case-card${challenge.solved ? ' solved' : ''}${expanded ? ' open' : ''}`}
+    >
       <button className="case-card-head" onClick={() => setExpanded((v) => !v)}>
         <span className={`diff-stamp diff-${challenge.difficulty}`}>
           {challenge.difficulty}
@@ -351,7 +420,8 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
         <div className="case-card-title">
           <h3>{challenge.title}</h3>
           <span className="mono case-card-meta">
-            {challenge.type} · {challenge.category} · {challenge.points} pts · #{challenge.slug}
+            {challenge.type} · {challenge.category} · {challenge.points} pts · #
+            {challenge.slug}
           </span>
         </div>
         <div className="case-card-status">
@@ -376,7 +446,11 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
           {challenge.kind === 'docker' && (
             <div className="instance-controls">
               {!instance ? (
-                <button className="btn btn-primary" onClick={start} disabled={busy}>
+                <button
+                  className="btn btn-primary"
+                  onClick={start}
+                  disabled={busy}
+                >
                   {busy ? 'Запуск…' : 'Запустить инстанс'}
                 </button>
               ) : (
@@ -391,7 +465,11 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
                       {instance.url} ↗
                     </a>
                   </div>
-                  <button className="btn btn-danger" onClick={stop} disabled={busy}>
+                  <button
+                    className="btn btn-danger"
+                    onClick={stop}
+                    disabled={busy}
+                  >
                     Остановить
                   </button>
                 </>
@@ -399,11 +477,37 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
             </div>
           )}
 
-          {challenge.kind === 'static' && (
+          {challenge.kind === 'static' && filesArr.length === 0 && (
             <div className="instance-controls">
-              <p className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                Статическое задание — файлы прилагаются.
+              <p
+                className="mono"
+                style={{ fontSize: 12, color: 'var(--text-dim)' }}
+              >
+                Статическое задание — файлы ещё не загружены.
               </p>
+            </div>
+          )}
+
+          {filesArr.length > 0 && (
+            <div className="challenge-files">
+              <h4 className="eyebrow">Файлы</h4>
+              <ul className="challenge-files-list">
+                {filesArr.map((f) => (
+                  <li key={f.id} className="challenge-file">
+                    <span className="mono challenge-file-name">{f.filename}</span>
+                    <span className="mono challenge-file-size">
+                      {formatSize(f.size)}
+                    </span>
+                    <button
+                      className="btn"
+                      disabled={downloading === f.id}
+                      onClick={() => downloadFile(f)}
+                    >
+                      {downloading === f.id ? 'Скачивание…' : 'Скачать'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -416,7 +520,11 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
               disabled={busy || challenge.solved}
               required
             />
-            <button className="btn" type="submit" disabled={busy || challenge.solved}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={busy || challenge.solved}
+            >
               {challenge.solved ? 'Решено' : 'Отправить'}
             </button>
           </form>
@@ -459,7 +567,8 @@ function LeaderboardTab({ slug, token, push }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    api.getLeaderboard(slug)
+    api
+      .getLeaderboard(slug)
       .then((s) => setSnapshot(s))
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Ошибка'))
       .finally(() => setLoading(false))
@@ -481,7 +590,9 @@ function LeaderboardTab({ slug, token, push }) {
     }
   })
 
-  if (loading) return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  if (loading) {
+    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  }
   if (error) return <div className="alert">{error}</div>
   if (!snapshot) return null
 
@@ -517,7 +628,9 @@ function LeaderboardTab({ slug, token, push }) {
                 <td className="mono lb-score">{r.score}</td>
                 <td className="mono">{r.solves_count}</td>
                 <td className="mono lb-time">
-                  {r.last_solve_at ? new Date(r.last_solve_at).toLocaleString('ru-RU') : '—'}
+                  {r.last_solve_at
+                    ? new Date(r.last_solve_at).toLocaleString('ru-RU')
+                    : '—'}
                 </td>
               </tr>
             ))}
@@ -536,7 +649,8 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
 
   async function withdraw() {
     if (!confirm('Отозвать заявку?')) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.withdrawFromCompetition(comp.slug)
       push?.({
@@ -548,7 +662,9 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
       await onReload()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -563,7 +679,10 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
           ) : (
             <div>
               <p>У вас нет команды в этом соревновании.</p>
-              <Link to={`/competitions/${comp.slug}/team`} className="btn btn-primary">
+              <Link
+                to={`/competitions/${comp.slug}/team`}
+                className="btn btn-primary"
+              >
                 Создать / присоединиться
               </Link>
             </div>
@@ -577,7 +696,9 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
           <ul className="invites-list">
             {invitations.map((t) => (
               <li key={t.id} className="invite-item">
-                <span>{t.name} (капитан: {t.captain_username})</span>
+                <span>
+                  {t.name} (капитан: {t.captain_username})
+                </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     className="btn btn-primary"
@@ -623,7 +744,10 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
             <p>
               Статус: <strong>{myApp.status}</strong>
               {myApp.decision_comment && (
-                <> — <em>{myApp.decision_comment}</em></>
+                <>
+                  {' '}
+                  — <em>{myApp.decision_comment}</em>
+                </>
               )}
             </p>
             {['pending', 'waitlist', 'team_pending'].includes(myApp.status) && (
@@ -644,7 +768,8 @@ function TeamSummaryBlock({ comp, team, onReload }) {
   return (
     <div>
       <p>
-        <strong>{team.name}</strong> · статус: {team.status} · состав: {team.member_count}
+        <strong>{team.name}</strong> · статус: {team.status} · состав:{' '}
+        {team.member_count}
       </p>
       {team.members?.length > 0 && (
         <ul className="team-members-list">

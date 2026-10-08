@@ -1,7 +1,4 @@
-"""Парсинг и валидация ZIP-архива задания соревнования.
-
-Используется в /admin/competitions/{slug}/challenges/upload.
-"""
+"""Парсинг и валидация ZIP-архива задания соревнования."""
 import hashlib
 import io
 import os
@@ -13,13 +10,20 @@ from pathlib import Path
 import yaml
 from fastapi import HTTPException
 
+from ..config import settings
 from ..schemas_competitions import Manifest
 
 
-MAX_ZIP_SIZE_BYTES = 500 * 1024 * 1024  # 500 МБ
-MAX_FILES = 5000
-ALLOWED_MANIFEST = "manifest.yaml"
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+ALLOWED_MANIFEST = "manifest.yaml"
+
+# Запрещённые имена и префиксы внутри ZIP.
+FORBIDDEN_NAMES = {".DS_Store", "Thumbs.db", "__MACOSX"}
+FORBIDDEN_PREFIXES = (".__MACOSX/", "__MACOSX/")
+
+# Порта, которые платформа использует под себя. container_port не может
+# совпадать ни с одним из них.
+RESERVED_PORTS = {80, 443, 5173, 5432, 8000}
 
 
 @dataclass
@@ -41,7 +45,6 @@ class ParsedChallenge:
 
 
 def _safe_extract_path(root: Path, member: str) -> Path:
-    """Защита от Zip Slip: путь не должен выходить за root."""
     target = (root / member).resolve()
     root_resolved = root.resolve()
     if not str(target).startswith(str(root_resolved) + os.sep) and target != root_resolved:
@@ -57,15 +60,25 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def parse_zip(zip_bytes: bytes, dest_dir: Path, *, expected_slug: str | None = None) -> ParsedChallenge:
-    """Распаковывает ZIP в dest_dir, валидирует манифест и структуру.
+def _validate_container_port(manifest: Manifest) -> None:
+    if manifest.kind != "docker":
+        return
+    if not manifest.container_port:
+        raise HTTPException(400, "container_port is required for kind=docker")
+    if manifest.container_port in RESERVED_PORTS:
+        raise HTTPException(
+            400,
+            f"container_port {manifest.container_port} is reserved by platform",
+        )
+    if not (1 <= manifest.container_port <= 65535):
+        raise HTTPException(400, f"container_port out of range: {manifest.container_port}")
 
-    Ожидаемая структура:
-      manifest.yaml
-      Dockerfile, app/...        (kind=docker)
-      public/...                 (kind=static)
-    """
-    if len(zip_bytes) > MAX_ZIP_SIZE_BYTES:
+
+def parse_zip(zip_bytes: bytes, dest_dir: Path, *, expected_slug: str | None = None) -> ParsedChallenge:
+    max_bytes = settings.competition_zip_max_bytes
+    max_files = settings.competition_zip_max_files
+
+    if len(zip_bytes) > max_bytes:
         raise HTTPException(413, f"ZIP too large: {len(zip_bytes)} bytes")
 
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -76,16 +89,27 @@ def parse_zip(zip_bytes: bytes, dest_dir: Path, *, expected_slug: str | None = N
         raise HTTPException(400, f"Invalid ZIP: {e}")
 
     names = zf.namelist()
-    if len(names) > MAX_FILES:
+    if len(names) > max_files:
         raise HTTPException(413, f"Too many files in ZIP: {len(names)}")
 
-    # 1. Безопасная распаковка
+    # 1. Валидация и безопасная распаковка.
+    seen = set()
     for name in names:
-        # Запрет абсолютных путей и ".."
+        if name in seen:
+            raise HTTPException(400, f"Duplicate entry in ZIP: {name}")
+        seen.add(name)
+
+        base = Path(name).name
+        if base in FORBIDDEN_NAMES:
+            raise HTTPException(400, f"Forbidden file in ZIP: {name}")
+        if any(name.startswith(p) for p in FORBIDDEN_PREFIXES):
+            raise HTTPException(400, f"Forbidden path in ZIP: {name}")
+
         if name.startswith("/") or ".." in Path(name).parts:
             raise HTTPException(400, f"Unsafe path in ZIP: {name}")
-        # Запрет symlink
+
         info = zf.getinfo(name)
+        # Запрет symlink.
         if (info.external_attr >> 16) & 0o170000 == 0o120000:
             raise HTTPException(400, f"Symlinks are not allowed: {name}")
 
@@ -97,7 +121,7 @@ def parse_zip(zip_bytes: bytes, dest_dir: Path, *, expected_slug: str | None = N
         with zf.open(info) as src, open(target, "wb") as dst:
             dst.write(src.read())
 
-    # 2. Манифест
+    # 2. Манифест.
     manifest_path = dest_dir / ALLOWED_MANIFEST
     if not manifest_path.exists():
         raise HTTPException(400, "manifest.yaml not found in ZIP root")
@@ -110,31 +134,40 @@ def parse_zip(zip_bytes: bytes, dest_dir: Path, *, expected_slug: str | None = N
     except Exception as e:
         raise HTTPException(400, f"Invalid manifest: {e}")
 
-    # 3. Slug
+    # 3. Slug.
     if expected_slug:
         slug = expected_slug
     else:
         slug = raw.get("slug") or dest_dir.name
     if not SLUG_RE.match(slug):
         raise HTTPException(400, f"Invalid slug: {slug}")
+    if len(slug) > 64:
+        raise HTTPException(400, "slug is too long")
 
-    # 4. Структура по kind
+    # 4. Структура по kind.
     if manifest.kind == "docker":
-        if not (dest_dir / manifest.metadata.get("docker", {}).get("dockerfile_path", "Dockerfile")).exists() \
-           and not (dest_dir / "Dockerfile").exists():
+        dockerfile_path = (
+            manifest.metadata.get("docker", {}).get("dockerfile_path", "Dockerfile")
+            if isinstance(manifest.metadata, dict)
+            else "Dockerfile"
+        )
+        if not (dest_dir / dockerfile_path).exists() and not (dest_dir / "Dockerfile").exists():
             raise HTTPException(400, "Dockerfile not found for kind=docker")
     elif manifest.kind == "static":
         public_dir = dest_dir / "public"
         if not public_dir.exists() or not any(public_dir.iterdir()):
             raise HTTPException(400, "public/ directory is empty for kind=static")
 
-    # 5. metadata
+    # 5. metadata.
     try:
         manifest.validate_metadata()
     except Exception as e:
         raise HTTPException(400, f"Invalid metadata for type={manifest.type}: {e}")
 
-    # 6. Собираем список файлов
+    # 6. Порт.
+    _validate_container_port(manifest)
+
+    # 7. Сбор файлов.
     files: list[ParsedFile] = []
     total = 0
     for p in dest_dir.rglob("*"):

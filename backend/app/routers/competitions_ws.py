@@ -1,4 +1,9 @@
-"""WebSocket-канал соревнования: live-лидерборд и события."""
+"""WebSocket-канал соревнования: live-лидерборд и события.
+
+Ключ канала в хабе — `comp:{slug}`. Тот же ключ используется в
+notification_service для личных каналов `user:{id}`, поэтому hub
+обслуживает оба типа каналов единообразно.
+"""
 from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -46,7 +51,8 @@ def _can_view_leaderboard(db, comp, user: Optional[User]) -> bool:
         return True
     if vis_val == LeaderboardVisibility.hidden.value:
         return False
-    # participants
+
+    # participants — только для одобренных
     app = (
         db.query(CompetitionApplication)
         .filter_by(competition_id=comp.id, user_id=user.id)
@@ -54,10 +60,14 @@ def _can_view_leaderboard(db, comp, user: Optional[User]) -> bool:
     )
     if app and app.status == ApplicationStatus.approved:
         return True
+
     team_ids = [
         t.id for (t,) in (
             db.query(CompetitionTeam.id)
-            .join(CompetitionTeamMember, CompetitionTeamMember.team_id == CompetitionTeam.id)
+            .join(
+                CompetitionTeamMember,
+                CompetitionTeamMember.team_id == CompetitionTeam.id,
+            )
             .filter(
                 CompetitionTeam.competition_id == comp.id,
                 CompetitionTeamMember.user_id == user.id,
@@ -78,13 +88,16 @@ def _can_view_leaderboard(db, comp, user: Optional[User]) -> bool:
         )
         if team_app:
             return True
+
     return False
 
 
 @router.websocket("/competitions/{slug}/stream")
 async def stream(websocket: WebSocket, slug: str, token: str = Query(None)):
     await websocket.accept()
+
     db = SessionLocal()
+    channel = f"comp:{slug}"
     try:
         try:
             comp = competition_service.get_by_slug(db, slug)
@@ -93,39 +106,48 @@ async def stream(websocket: WebSocket, slug: str, token: str = Query(None)):
             return
 
         username = _decode_username(token)
-        user = db.query(User).filter(User.username == username).first() if username else None
+        user = (
+            db.query(User).filter(User.username == username).first()
+            if username else None
+        )
 
         if not _can_view_leaderboard(db, comp, user):
             await websocket.close(code=1008)
             return
 
-        await hub.subscribe(slug, websocket)
+        await hub.subscribe(channel, websocket)
 
-        # Первый снапшот сразу.
+        # Первый снапшот сразу, чтобы фронт не ждал.
         snapshot = lb.compute(db, comp)
         await websocket.send_json({
             "type": "leaderboard.snapshot",
             "data": {
                 "individuals": [
-                    {"rank": r.rank, "id": r.id, "name": r.name, "score": r.score,
-                     "solves": r.solves_count}
+                    {
+                        "rank": r.rank, "id": r.id, "name": r.name,
+                        "score": r.score, "solves": r.solves_count,
+                    }
                     for r in snapshot.individuals
                 ],
                 "teams": [
-                    {"rank": r.rank, "id": r.id, "name": r.name, "score": r.score,
-                     "solves": r.solves_count}
+                    {
+                        "rank": r.rank, "id": r.id, "name": r.name,
+                        "score": r.score, "solves": r.solves_count,
+                    }
                     for r in snapshot.teams
                 ],
             },
         })
 
-        # Держим соединение открытым.
+        # Держим соединение открытым, читаем пинги/сообщения клиента.
         while True:
             try:
-                # Принимаем пинги от клиента.
                 await websocket.receive_text()
             except WebSocketDisconnect:
                 break
     finally:
-        await hub.unsubscribe(slug, websocket)
+        try:
+            await hub.unsubscribe(channel, websocket)
+        except Exception:
+            pass
         db.close()

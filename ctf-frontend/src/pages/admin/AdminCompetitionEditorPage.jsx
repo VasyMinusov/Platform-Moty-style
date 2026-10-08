@@ -20,10 +20,21 @@ const DEFAULT_SCORING = {
   default_points: 100,
   per_challenge_override: {},
   dynamic_decay: {
-    decay_type: 'step', decay_step: 5, decay_interval: 5,
-    min_points: 50, max_points: 1000, compute_at: 'on_solve',
+    decay_type: 'step',
+    decay_step: 5,
+    decay_interval: 5,
+    min_points: 50,
+    max_points: 1000,
+    compute_at: 'on_solve',
   },
-  placement: { places: [{ place: 1, points: 1500 }, { place: 2, points: 1000 }], default_points: 100, apply_at: 'finish' },
+  placement: {
+    places: [
+      { place: 1, points: 1500 },
+      { place: 2, points: 1000 },
+    ],
+    default_points: 100,
+    apply_at: 'finish',
+  },
   hint_penalty: { apply: true },
   bonuses: [],
   team_scoring: 'team_only',
@@ -62,16 +73,16 @@ const EMPTY = {
 
 function toIsoOrNull(value) {
   if (!value) return null
-  // <input type="datetime-local"> отдаёт 'YYYY-MM-DDTHH:mm'
   return new Date(value).toISOString()
 }
 
 function fromIso(value) {
   if (!value) return ''
   const d = new Date(value)
-  // Преобразуем в локальный ISO без секунд и зоны — формат input
   const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`
 }
 
 function numOrNull(v) {
@@ -98,7 +109,8 @@ export default function AdminCompetitionEditorPage() {
 
   useEffect(() => {
     if (isNew) return
-    api.adminGetCompetition(slug)
+    api
+      .adminGetCompetition(slug)
       .then((c) => {
         setForm({
           ...EMPTY,
@@ -161,11 +173,16 @@ export default function AdminCompetitionEditorPage() {
   }
 
   async function save() {
-    setSaving(true); setError(null)
+    setSaving(true)
+    setError(null)
     try {
       if (!form.title.trim()) throw new ApiError('Укажите название', 0, null)
       if (isNew && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) {
-        throw new ApiError('Slug должен быть kebab-case: латиница, цифры, дефисы', 0, null)
+        throw new ApiError(
+          'Slug должен быть kebab-case: латиница, цифры, дефисы',
+          0,
+          null,
+        )
       }
       const payload = buildPayload()
       const saved = isNew
@@ -173,47 +190,61 @@ export default function AdminCompetitionEditorPage() {
         : await api.adminUpdateCompetition(slug, payload)
       navigate(`/admin/competitions/${saved.slug}/edit`)
       if (isNew) setStep('moderators')
-      else setForm((f) => ({ ...f, ...saved,
-        registration_opens_at: fromIso(saved.registration_opens_at),
-        registration_closes_at: fromIso(saved.registration_closes_at),
-        starts_at: fromIso(saved.starts_at),
-        ends_at: fromIso(saved.ends_at),
-      }))
+      else
+        setForm((f) => ({
+          ...f,
+          ...saved,
+          registration_opens_at: fromIso(saved.registration_opens_at),
+          registration_closes_at: fromIso(saved.registration_closes_at),
+          starts_at: fromIso(saved.starts_at),
+          ends_at: fromIso(saved.ends_at),
+        }))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка сохранения')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function addModerator() {
     const uid = numOrNull(modUserId)
     if (uid === null) return
-    setSaving(true); setError(null)
+    setSaving(true)
+    setError(null)
     try {
       await api.adminAddModerator(slug, { user_id: uid, role: modRole })
       setModUserId('')
       setModerators(await api.adminListModerators(slug))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function removeModerator(uid) {
     if (!confirm(`Снять модератора #${uid}?`)) return
-    setSaving(true); setError(null)
+    setSaving(true)
+    setError(null)
     try {
       await api.adminRemoveModerator(slug, uid)
       setModerators(await api.adminListModerators(slug))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function publish() {
-    setSaving(true); setError(null)
+    setSaving(true)
+    setError(null)
     try {
       await api.adminPublishCompetition(slug)
       const c = await api.adminGetCompetition(slug)
-      setForm((f) => ({ ...f, ...c,
+      setForm((f) => ({
+        ...f,
+        ...c,
         registration_opens_at: fromIso(c.registration_opens_at),
         registration_closes_at: fromIso(c.registration_closes_at),
         starts_at: fromIso(c.starts_at),
@@ -221,16 +252,22 @@ export default function AdminCompetitionEditorPage() {
       }))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
-  if (loading) return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  if (loading) {
+    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  }
 
   return (
     <div>
       <div className="page-head">
         <div>
-          <span className="eyebrow">{isNew ? 'новое соревнование' : `#${slug}`}</span>
+          <span className="eyebrow">
+            {isNew ? 'новое соревнование' : `#${slug}`}
+          </span>
           <h1>{isNew ? 'Создание соревнования' : form.title}</h1>
         </div>
         <button className="btn" onClick={() => navigate('/admin/competitions')}>
@@ -254,11 +291,19 @@ export default function AdminCompetitionEditorPage() {
         </nav>
 
         <div className="wiz-body">
-          {step === 'basic' && <BasicStep form={form} setField={setField} isNew={isNew} />}
+          {step === 'basic' && (
+            <BasicStep form={form} setField={setField} isNew={isNew} />
+          )}
           {step === 'mode' && <ModeStep form={form} setField={setField} />}
-          {step === 'schedule' && <ScheduleStep form={form} setField={setField} />}
-          {step === 'visibility' && <VisibilityStep form={form} setField={setField} />}
-          {step === 'scoring' && <ScoringStep form={form} setField={setField} />}
+          {step === 'schedule' && (
+            <ScheduleStep form={form} setField={setField} />
+          )}
+          {step === 'visibility' && (
+            <VisibilityStep form={form} setField={setField} />
+          )}
+          {step === 'scoring' && (
+            <ScoringStep form={form} setField={setField} />
+          )}
           {step === 'infra' && <InfraStep form={form} setField={setField} />}
           {step === 'moderators' && (
             <ModeratorsStep
@@ -285,11 +330,19 @@ export default function AdminCompetitionEditorPage() {
           )}
 
           <div className="wiz-foot">
-            <button className="btn" onClick={() => navigate('/admin/competitions')} disabled={saving}>
+            <button
+              className="btn"
+              onClick={() => navigate('/admin/competitions')}
+              disabled={saving}
+            >
               Отмена
             </button>
             {step !== 'publish' && (
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
+              <button
+                className="btn btn-primary"
+                onClick={save}
+                disabled={saving}
+              >
                 {saving ? 'Сохранение…' : isNew ? 'Создать' : 'Сохранить'}
               </button>
             )}
@@ -372,7 +425,8 @@ function ModeStep({ form, setField }) {
             <div className="wiz-field">
               <label>Мин. состав</label>
               <input
-                type="number" min="1"
+                type="number"
+                min="1"
                 value={form.min_team_size}
                 onChange={(e) => setField('min_team_size', e.target.value)}
               />
@@ -380,7 +434,8 @@ function ModeStep({ form, setField }) {
             <div className="wiz-field">
               <label>Макс. состав</label>
               <input
-                type="number" min="1"
+                type="number"
+                min="1"
                 value={form.max_team_size}
                 onChange={(e) => setField('max_team_size', e.target.value)}
               />
@@ -388,7 +443,8 @@ function ModeStep({ form, setField }) {
             <div className="wiz-field">
               <label>Макс. команд</label>
               <input
-                type="number" min="1"
+                type="number"
+                min="1"
                 value={form.max_teams}
                 onChange={(e) => setField('max_teams', e.target.value)}
               />
@@ -409,7 +465,8 @@ function ModeStep({ form, setField }) {
       <div className="wiz-field">
         <label>Макс. участников (0 = без ограничения)</label>
         <input
-          type="number" min="0"
+          type="number"
+          min="0"
           value={form.max_participants}
           onChange={(e) => setField('max_participants', e.target.value)}
         />
@@ -491,7 +548,10 @@ function VisibilityStep({ form, setField }) {
       <div className="wiz-row">
         <div className="wiz-field">
           <label>Видимость соревнования</label>
-          <select value={form.visibility} onChange={(e) => setField('visibility', e.target.value)}>
+          <select
+            value={form.visibility}
+            onChange={(e) => setField('visibility', e.target.value)}
+          >
             <option value="public">Публичное</option>
             <option value="private">Приватное</option>
             <option value="hidden">Скрытое</option>
@@ -511,7 +571,10 @@ function VisibilityStep({ form, setField }) {
       </div>
       <div className="wiz-field">
         <label>Tie-breaker</label>
-        <select value={form.tie_breaker} onChange={(e) => setField('tie_breaker', e.target.value)}>
+        <select
+          value={form.tie_breaker}
+          onChange={(e) => setField('tie_breaker', e.target.value)}
+        >
           <option value="last_solve_time">По времени последнего решения</option>
           <option value="first_solve_time">По времени первого решения</option>
           <option value="solves_count">По числу решений</option>
@@ -541,7 +604,8 @@ function ScoringStep({ form, setField }) {
       <div className="wiz-field">
         <label>Дефолтные очки за задание</label>
         <input
-          type="number" min="0"
+          type="number"
+          min="0"
           value={s.default_points}
           onChange={(e) => update({ default_points: Number(e.target.value) || 0 })}
         />
@@ -553,9 +617,14 @@ function ScoringStep({ form, setField }) {
             <label>Тип decay</label>
             <select
               value={s.dynamic_decay.decay_type}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, decay_type: e.target.value },
-              })}
+              onChange={(e) =>
+                update({
+                  dynamic_decay: {
+                    ...s.dynamic_decay,
+                    decay_type: e.target.value,
+                  },
+                })
+              }
             >
               <option value="step">Шаг</option>
               <option value="linear">Линейный</option>
@@ -565,21 +634,33 @@ function ScoringStep({ form, setField }) {
           <div className="wiz-field">
             <label>Макс. очков</label>
             <input
-              type="number" min="0"
+              type="number"
+              min="0"
               value={s.dynamic_decay.max_points}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, max_points: Number(e.target.value) || 0 },
-              })}
+              onChange={(e) =>
+                update({
+                  dynamic_decay: {
+                    ...s.dynamic_decay,
+                    max_points: Number(e.target.value) || 0,
+                  },
+                })
+              }
             />
           </div>
           <div className="wiz-field">
             <label>Мин. очков</label>
             <input
-              type="number" min="0"
+              type="number"
+              min="0"
               value={s.dynamic_decay.min_points}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, min_points: Number(e.target.value) || 0 },
-              })}
+              onChange={(e) =>
+                update({
+                  dynamic_decay: {
+                    ...s.dynamic_decay,
+                    min_points: Number(e.target.value) || 0,
+                  },
+                })
+              }
             />
           </div>
         </div>
@@ -590,33 +671,43 @@ function ScoringStep({ form, setField }) {
           <div className="wiz-field">
             <label>Шаг снижения</label>
             <input
-              type="number" min="0"
+              type="number"
+              min="0"
               value={s.dynamic_decay.decay_step}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, decay_step: Number(e.target.value) || 0 },
-              })}
+              onChange={(e) =>
+                update({
+                  dynamic_decay: {
+                    ...s.dynamic_decay,
+                    decay_step: Number(e.target.value) || 0,
+                  },
+                })
+              }
             />
           </div>
           <div className="wiz-field">
             <label>Интервал (кол-во решений)</label>
             <input
-              type="number" min="1"
+              type="number"
+              min="1"
               value={s.dynamic_decay.decay_interval}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, decay_interval: Number(e.target.value) || 1 },
-              })}
+              onChange={(e) =>
+                update({
+                  dynamic_decay: {
+                    ...s.dynamic_decay,
+                    decay_interval: Number(e.target.value) || 1,
+                  },
+                })
+              }
             />
           </div>
           <div className="wiz-field">
             <label>Когда считать</label>
             <select
-              value={s.dynamic_decay.compute_at}
-              onChange={(e) => update({
-                dynamic_decay: { ...s.dynamic_decay, compute_at: e.target.value },
-              })}
+              value="on_solve"
+              disabled
+              title="Динамический пересчёт — в следующей версии"
             >
               <option value="on_solve">При решении</option>
-              <option value="dynamic">Динамически</option>
             </select>
           </div>
         </div>
@@ -625,22 +716,33 @@ function ScoringStep({ form, setField }) {
       {s.mode === 'placement' && (
         <div className="wiz-field">
           <label>Места</label>
-          <div className="mono" style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+          <div
+            className="mono"
+            style={{ fontSize: 12, color: 'var(--text-faint)' }}
+          >
             {s.placement.places.map((p) => `#${p.place} → ${p.points}`).join(' · ')}
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            Редактирование мест — отдельно (см. API `scoring_config.placement.places`).
+            Очки раздаются автоматически при завершении соревнования.
           </p>
         </div>
       )}
 
       <div className="wiz-field">
         <label>Штраф за подсказки</label>
-        <label style={{ fontFamily: 'inherit', textTransform: 'none', letterSpacing: 0 }}>
+        <label
+          style={{
+            fontFamily: 'inherit',
+            textTransform: 'none',
+            letterSpacing: 0,
+          }}
+        >
           <input
             type="checkbox"
             checked={!!s.hint_penalty.apply}
-            onChange={(e) => update({ hint_penalty: { apply: e.target.checked } })}
+            onChange={(e) =>
+              update({ hint_penalty: { apply: e.target.checked } })
+            }
           />{' '}
           Вычитать стоимость подсказки из очков
         </label>
@@ -659,7 +761,8 @@ function InfraStep({ form, setField }) {
         <div className="wiz-field">
           <label>TTL инстанса (секунд)</label>
           <input
-            type="number" min="60"
+            type="number"
+            min="60"
             value={form.instance_ttl_seconds}
             onChange={(e) => setField('instance_ttl_seconds', e.target.value)}
           />
@@ -667,7 +770,8 @@ function InfraStep({ form, setField }) {
         <div className="wiz-field">
           <label>Макс. инстансов на пользователя</label>
           <input
-            type="number" min="1"
+            type="number"
+            min="1"
             value={form.max_instances_per_user}
             onChange={(e) => setField('max_instances_per_user', e.target.value)}
           />
@@ -677,7 +781,8 @@ function InfraStep({ form, setField }) {
         <div className="wiz-field">
           <label>Макс. инстансов на команду</label>
           <input
-            type="number" min="1"
+            type="number"
+            min="1"
             value={form.max_instances_per_team}
             onChange={(e) => setField('max_instances_per_team', e.target.value)}
           />
@@ -685,9 +790,12 @@ function InfraStep({ form, setField }) {
         <div className="wiz-field">
           <label>Макс. инстансов на соревнование</label>
           <input
-            type="number" min="1"
+            type="number"
+            min="1"
             value={form.max_instances_per_competition}
-            onChange={(e) => setField('max_instances_per_competition', e.target.value)}
+            onChange={(e) =>
+              setField('max_instances_per_competition', e.target.value)
+            }
           />
         </div>
       </div>
@@ -717,7 +825,18 @@ function InfraStep({ form, setField }) {
   )
 }
 
-function ModeratorsStep({ isNew, isAdmin, moderators, modUserId, setModUserId, modRole, setModRole, onAdd, onRemove, busy }) {
+function ModeratorsStep({
+  isNew,
+  isAdmin,
+  moderators,
+  modUserId,
+  setModUserId,
+  modRole,
+  setModRole,
+  onAdd,
+  onRemove,
+  busy,
+}) {
   if (isNew) {
     return (
       <>
@@ -763,7 +882,15 @@ function ModeratorsStep({ isNew, isAdmin, moderators, modUserId, setModUserId, m
               </tr>
             ))}
             {moderators.length === 0 && (
-              <tr><td colSpan={4} className="mono" style={{ color: 'var(--text-faint)' }}>пока никого</td></tr>
+              <tr>
+                <td
+                  colSpan={4}
+                  className="mono"
+                  style={{ color: 'var(--text-faint)' }}
+                >
+                  пока никого
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -790,7 +917,11 @@ function ModeratorsStep({ isNew, isAdmin, moderators, modUserId, setModUserId, m
         </div>
       )}
       {isAdmin && (
-        <button className="btn btn-primary" disabled={busy || !modUserId} onClick={onAdd}>
+        <button
+          className="btn btn-primary"
+          disabled={busy || !modUserId}
+          onClick={onAdd}
+        >
           Назначить
         </button>
       )}
@@ -813,8 +944,8 @@ function PublishStep({ isNew, form, isAdmin, onPublish, busy }) {
     <>
       <h2>Публикация</h2>
       <p style={{ color: 'var(--text-dim)' }}>
-        Текущий статус: <strong>{form.status}</strong>. Публикация переводит в
-        <strong> announced</strong> — на этом шаге выделяется диапазон портов и
+        Текущий статус: <strong>{form.status}</strong>. Публикация переводит в{' '}
+        <strong>announced</strong> — на этом шаге выделяется диапазон портов и
         создаётся Docker-сеть. Публиковать может только администратор.
       </p>
       <button

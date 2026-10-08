@@ -187,7 +187,7 @@ def record_solve(
     # (это позволяет competition_scoring_service оставаться синхронным).
     try:
         from .competition_stream import publish_sync
-        publish_sync(comp.slug, {
+        publish_sync(f"comp:{comp.slug}", {
             "type": "solve.created",
             "data": {
                 "challenge_slug": ch.slug,

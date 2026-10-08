@@ -34,7 +34,9 @@
   margin-bottom: -1px;
 }
 
-.comp-tab:hover { color: var(--text); }
+.comp-tab:hover {
+  color: var(--text);
+}
 
 .comp-tab.active {
   color: var(--accent);
@@ -95,6 +97,55 @@
   color: var(--text-dim);
 }
 
+/* ── Файлы задания ── */
+
+.challenge-files {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.challenge-files h4 {
+  margin-bottom: 10px;
+}
+
+.challenge-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.challenge-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.challenge-file:last-child {
+  margin-bottom: 0;
+}
+
+.challenge-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.challenge-file-size {
+  font-size: 11px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+/* ── Leaderboard ── */
+
 .lb-wrap {
   background: var(--panel);
   border: 1px solid var(--border-soft);
@@ -145,6 +196,8 @@
   margin-top: 3px;
 }
 
+/* ── Моя заявка ── */
+
 .me-section {
   margin-bottom: 28px;
   padding: 18px 22px;
@@ -172,7 +225,9 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
-.invite-item:last-child { border-bottom: none; }
+.invite-item:last-child {
+  border-bottom: none;
+}
 
 .team-members-list {
   list-style: none;

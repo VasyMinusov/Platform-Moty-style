@@ -41,12 +41,14 @@ class CompetitionStreamHub:
 hub = CompetitionStreamHub()
 
 
-def publish_sync(slug: str, event: dict[str, Any]) -> None:
+def publish_sync(channel: str, event: dict[str, Any]) -> None:
     """Синхронный helper для вызова из обычных endpoints.
-    Если нет работающего loop'а — просто пропускаем (WebSocket-канал не активен).
+
+    channel — уже готовый ключ, например `comp:demo-2026` или `user:42`.
+    Если нет работающего loop'а — пропускаем (WebSocket-канал не активен).
     """
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         return
-    loop.create_task(hub.broadcast(slug, event))
+    loop.create_task(hub.broadcast(channel, event))

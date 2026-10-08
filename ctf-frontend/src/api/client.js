@@ -70,8 +70,51 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
   return data
 }
 
+/**
+ * Скачивает файл с авторизацией. Возвращает Blob.
+ * Используется, когда нужно отдать файл браузеру с Bearer-токеном.
+ */
+export async function downloadFile(path) {
+  const token = getToken()
+  const headers = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${BASE_URL}${path}`, { headers })
+  if (!response.ok) {
+    let detail = null
+    try {
+      detail = (await response.json()).detail
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(
+      detail || `Ошибка скачивания (${response.status})`,
+      response.status,
+      detail,
+    )
+  }
+  return response.blob()
+}
+
+/**
+ * Скачивает файл и сохраняет его через <a download>.
+ */
+export async function downloadAndSave(path, filename) {
+  const blob = await downloadFile(path)
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename || 'download'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export const api = {
-  register: (payload) => apiFetch('/auth/register', { method: 'POST', body: payload, skipAuth: true }),
+  // ── Auth ──
+  register: (payload) =>
+    apiFetch('/auth/register', { method: 'POST', body: payload, skipAuth: true }),
   login: (username, password) => {
     const form = new URLSearchParams()
     form.set('username', username)
@@ -80,34 +123,44 @@ export const api = {
   },
   me: () => apiFetch('/auth/me'),
 
-  // Задания (глобальные)
+  // ── Задания (глобальные) ──
   listChallenges: () => apiFetch('/challenges'),
   startChallenge: (slug) => apiFetch(`/challenges/${slug}/start`, { method: 'POST' }),
   stopChallenge: (slug) => apiFetch(`/challenges/${slug}/stop`, { method: 'POST' }),
-  submitFlag: (slug, flag) => apiFetch(`/challenges/${slug}/submit`, { method: 'POST', body: { flag } }),
+  submitFlag: (slug, flag) =>
+    apiFetch(`/challenges/${slug}/submit`, { method: 'POST', body: { flag } }),
 
-  // Админ (глобальный)
+  // ── Админ (глобальный) ──
   syncChallenges: () => apiFetch('/admin/challenges/sync', { method: 'POST' }),
   reapInstances: () => apiFetch('/admin/instances/reap', { method: 'POST' }),
   listUsers: () => apiFetch('/admin/users'),
-  updateUser: (id, payload) => apiFetch(`/admin/users/${id}`, { method: 'PATCH', body: payload }),
-  setUserRole: (id, role) => apiFetch(`/admin/users/${id}/role`, { method: 'PUT', body: { role } }),
+  updateUser: (id, payload) =>
+    apiFetch(`/admin/users/${id}`, { method: 'PATCH', body: payload }),
+  setUserRole: (id, role) =>
+    apiFetch(`/admin/users/${id}/role`, { method: 'PUT', body: { role } }),
 
-  // Библиотека
+  // ── Библиотека занятий ──
   listLessons: () => apiFetch('/lessons'),
   getLesson: (slug) => apiFetch(`/lessons/${slug}`),
-  createLesson: (payload) => apiFetch('/lessons', { method: 'POST', body: payload }),
-  updateLesson: (slug, payload) => apiFetch(`/lessons/${slug}`, { method: 'PUT', body: payload }),
+  createLesson: (payload) =>
+    apiFetch('/lessons', { method: 'POST', body: payload }),
+  updateLesson: (slug, payload) =>
+    apiFetch(`/lessons/${slug}`, { method: 'PUT', body: payload }),
   deleteLesson: (slug) => apiFetch(`/lessons/${slug}`, { method: 'DELETE' }),
 
-  // Write-ups
+  // ── Write-ups ──
   listWriteups: () => apiFetch('/writeups'),
   getWriteup: (slug) => apiFetch(`/writeups/${slug}`),
-  createWriteup: (payload) => apiFetch('/writeups', { method: 'POST', body: payload }),
-  updateWriteup: (slug, payload) => apiFetch(`/writeups/${slug}`, { method: 'PUT', body: payload }),
+  createWriteup: (payload) =>
+    apiFetch('/writeups', { method: 'POST', body: payload }),
+  updateWriteup: (slug, payload) =>
+    apiFetch(`/writeups/${slug}`, { method: 'PUT', body: payload }),
   deleteWriteup: (slug) => apiFetch(`/writeups/${slug}`, { method: 'DELETE' }),
 
-  // ── Соревнования: публичное ──
+  // ══════════════════════════════════════════════════════════════════
+  // Соревнования: публичное / участническое
+  // ══════════════════════════════════════════════════════════════════
+
   listCompetitions: (params = {}) => {
     const qs = new URLSearchParams()
     if (params.status) qs.set('status', params.status)
@@ -153,7 +206,10 @@ export const api = {
   createTeam: (slug, name) =>
     apiFetch(`/competitions/${slug}/teams`, { method: 'POST', body: { name } }),
   renameTeam: (slug, teamId, name) =>
-    apiFetch(`/competitions/${slug}/teams/${teamId}`, { method: 'PATCH', body: { name } }),
+    apiFetch(`/competitions/${slug}/teams/${teamId}`, {
+      method: 'PATCH',
+      body: { name },
+    }),
   disbandTeam: (slug, teamId) =>
     apiFetch(`/competitions/${slug}/teams/${teamId}`, { method: 'DELETE' }),
   inviteToTeam: (slug, teamId, username) =>
@@ -166,9 +222,14 @@ export const api = {
   declineInvite: (slug, teamId) =>
     apiFetch(`/competitions/${slug}/teams/${teamId}/invite/decline`, { method: 'POST' }),
   joinByCode: (slug, invite_code) =>
-    apiFetch(`/competitions/${slug}/teams/join-by-code`, { method: 'POST', body: { invite_code } }),
+    apiFetch(`/competitions/${slug}/teams/join-by-code`, {
+      method: 'POST',
+      body: { invite_code },
+    }),
   kickMember: (slug, teamId, userId) =>
-    apiFetch(`/competitions/${slug}/teams/${teamId}/members/${userId}`, { method: 'DELETE' }),
+    apiFetch(`/competitions/${slug}/teams/${teamId}/members/${userId}`, {
+      method: 'DELETE',
+    }),
   leaveTeam: (slug, teamId) =>
     apiFetch(`/competitions/${slug}/teams/${teamId}/leave`, { method: 'POST' }),
 
@@ -177,7 +238,10 @@ export const api = {
     apiFetch(`/competitions/${slug}/appeals`, { method: 'POST', body: payload }),
   listMyAppeals: (slug) => apiFetch(`/competitions/${slug}/my-appeals`),
 
-  // ── Соревнования: админ ──
+  // ══════════════════════════════════════════════════════════════════
+  // Соревнования: админ
+  // ══════════════════════════════════════════════════════════════════
+
   adminListCompetitions: (params = {}) => {
     const qs = new URLSearchParams()
     if (params.status) qs.set('status', params.status)
@@ -212,9 +276,14 @@ export const api = {
 
   adminListModerators: (slug) => apiFetch(`/admin/competitions/${slug}/moderators`),
   adminAddModerator: (slug, payload) =>
-    apiFetch(`/admin/competitions/${slug}/moderators`, { method: 'POST', body: payload }),
+    apiFetch(`/admin/competitions/${slug}/moderators`, {
+      method: 'POST',
+      body: payload,
+    }),
   adminRemoveModerator: (slug, userId) =>
-    apiFetch(`/admin/competitions/${slug}/moderators/${userId}`, { method: 'DELETE' }),
+    apiFetch(`/admin/competitions/${slug}/moderators/${userId}`, {
+      method: 'DELETE',
+    }),
 
   adminListApplications: (slug, status) => {
     const qs = status ? `?status=${status}` : ''
@@ -222,38 +291,50 @@ export const api = {
   },
   adminDecideApplication: (slug, appId, payload) =>
     apiFetch(`/admin/competitions/${slug}/applications/${appId}`, {
-      method: 'PATCH', body: payload,
+      method: 'PATCH',
+      body: payload,
     }),
 
   adminListChallenges: (slug) => apiFetch(`/admin/competitions/${slug}/challenges`),
   adminGetChallenge: (slug, chSlug) =>
     apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}`),
-  adminUploadChallenge: (slug, file, onProgress) => {
-    // fetch не умеет onProgress, но оставим в интерфейсе для будущего XHR-варианта.
+  adminUploadChallenge: (slug, file) => {
     const form = new FormData()
     form.append('file', file)
     return apiFetch(`/admin/competitions/${slug}/challenges/upload`, {
-      method: 'POST', body: form,
+      method: 'POST',
+      body: form,
     })
   },
   adminUpdateChallenge: (slug, chSlug, payload) =>
-    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}`, { method: 'PATCH', body: payload }),
+    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
   adminDeleteChallenge: (slug, chSlug) =>
-    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}`, { method: 'DELETE' }),
+    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}`, {
+      method: 'DELETE',
+    }),
   adminRebuildChallenge: (slug, chSlug) =>
-    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}/rebuild`, { method: 'POST' }),
+    apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}/rebuild`, {
+      method: 'POST',
+    }),
   adminBuildStatus: (slug, chSlug) =>
     apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}/build-status`),
   adminPromoteChallenge: (slug, chSlug, payload) =>
     apiFetch(`/admin/competitions/${slug}/challenges/${chSlug}/promote`, {
-      method: 'POST', body: payload,
+      method: 'POST',
+      body: payload,
     }),
 
   adminListTeams: (slug) => apiFetch(`/competitions/${slug}/teams`),
 
   adminGetDashboard: (slug) => apiFetch(`/admin/competitions/${slug}/dashboard`),
   adminScoreAdjust: (slug, payload) =>
-    apiFetch(`/admin/competitions/${slug}/score-adjust`, { method: 'POST', body: payload }),
+    apiFetch(`/admin/competitions/${slug}/score-adjust`, {
+      method: 'POST',
+      body: payload,
+    }),
 
   adminListAppeals: (slug, status) => {
     const qs = status ? `?status=${status}` : ''
@@ -261,6 +342,26 @@ export const api = {
   },
   adminResolveAppeal: (slug, appealId, payload) =>
     apiFetch(`/admin/competitions/${slug}/appeals/${appealId}`, {
-      method: 'PATCH', body: payload,
+      method: 'PATCH',
+      body: payload,
     }),
+
+  // ══════════════════════════════════════════════════════════════════
+  // Уведомления
+  // ══════════════════════════════════════════════════════════════════
+
+  listNotifications: ({ limit = 50, offset = 0, unread_only = false } = {}) => {
+    const qs = new URLSearchParams()
+    qs.set('limit', String(limit))
+    qs.set('offset', String(offset))
+    if (unread_only) qs.set('unread_only', 'true')
+    return apiFetch(`/notifications?${qs}`)
+  },
+  markNotificationRead: (id) =>
+    apiFetch(`/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () =>
+    apiFetch('/notifications/read-all', { method: 'POST' }),
+  deleteNotification: (id) =>
+    apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
+  clearNotifications: () => apiFetch('/notifications', { method: 'DELETE' }),
 }

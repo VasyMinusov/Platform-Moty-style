@@ -19,8 +19,8 @@ from ..models_competitions import (
     CompetitionTeamMember, TeamMemberStatus,
 )
 from ..schemas_competitions import (
-    BuildStatusOut, CompetitionChallengeOut, CompetitionChallengeUpdate,
-    PromoteChallengeRequest,
+    BuildStatusOut, CompetitionChallengeOut, CompetitionChallengeFileOut,
+    CompetitionChallengeUpdate, PromoteChallengeRequest,
 )
 from ..security import (
     get_current_user, require_admin, competition_moderator_required,
@@ -66,8 +66,24 @@ def _serialize_challenge(
         user_id=user.id if user else None,
         team_id=team_id,
     )
+
+    # Публичные файлы задания. Для kind=docker тоже могут быть (source,
+    # binary и т.п.) — фронт покажет их отдельно. manifest.yaml и Dockerfile
+    # в БД помечены is_public=False и сюда не попадут.
+    from ..models_competitions import CompetitionChallengeFile
+    files = (
+        db.query(CompetitionChallengeFile)
+        .filter(
+            CompetitionChallengeFile.challenge_id == ch.id,
+            CompetitionChallengeFile.is_public.is_(True),
+        )
+        .order_by(CompetitionChallengeFile.filename)
+        .all()
+    )
+
     data = CompetitionChallengeOut.model_validate(ch)
     data.solved = solved
+    data.files = [CompetitionChallengeFileOut.model_validate(f) for f in files]
     return data
 
 

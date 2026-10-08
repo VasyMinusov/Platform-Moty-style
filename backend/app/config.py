@@ -8,8 +8,6 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 12
 
     challenges_dir: str = "/challenges"
-    # Подпапка внутри challenges_dir, куда распаковываются задания соревнований.
-    # Итоговый путь: {challenges_dir}/{competitions_subdir}/{comp_slug}/{ch_slug}
     competitions_subdir: str = "competitions"
 
     challenge_port_range_start: int = 30000
@@ -23,6 +21,20 @@ class Settings(BaseSettings):
     # Лимиты ZIP-загрузки задания соревнования.
     competition_zip_max_bytes: int = 500 * 1024 * 1024
     competition_zip_max_files: int = 5000
+
+    # Rate limiting.
+    rate_limit_enabled: bool = True
+
+    # Hardening сборки.
+    # Разрешать только базовые образы из allowlist.
+    build_enforce_base_image_allowlist: bool = True
+    # Сборка без сети.
+    build_no_network: bool = True
+    # Таймаут сборки в секундах.
+    build_timeout_seconds: int = 900
+    # Лимиты ресурсов на этап сборки.
+    build_mem_limit: str = "2g"
+    build_cpu_quota: int = 100_000  # 1 CPU
 
     class Config:
         env_file = ".env"

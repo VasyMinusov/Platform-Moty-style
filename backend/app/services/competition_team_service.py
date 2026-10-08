@@ -346,7 +346,7 @@ def invite_user(
 ) -> CompetitionTeamMember:
     _ensure_captain(team, actor)
 
-    # Лимит состава
+    # Лимит состава.
     if comp.max_team_size is not None:
         size = _accepted_size(db, team.id)
         pending_invites = (
@@ -401,6 +401,26 @@ def invite_user(
     )
     db.commit()
     db.refresh(member)
+
+    # ── Уведомление приглашённому ─────────────────────────────────────
+    from . import notification_service
+
+    notification_service.push(
+        db, user_id=invitee.id,
+        type="team.invite",
+        title="Приглашение в команду",
+        message=f"{team.name} · {comp.title}",
+        level="info",
+        link=f"/competitions/{comp.slug}/team",
+        payload={
+            "team_id": team.id,
+            "team_name": team.name,
+            "competition_id": comp.id,
+            "captain_id": team.captain_id,
+            "captain_username": actor.username,
+        },
+    )
+
     return member
 
 
@@ -411,7 +431,7 @@ def accept_invite(
     if not m or m.status != TeamMemberStatus.invited:
         raise HTTPException(404, "Invitation not found")
 
-    # Проверка: не принял ли уже другое приглашение в этом соревновании
+    # Не принял ли уже другое приглашение в этом соревновании?
     other = (
         db.query(CompetitionTeamMember)
         .join(CompetitionTeam, CompetitionTeam.id == CompetitionTeamMember.team_id)
@@ -426,7 +446,7 @@ def accept_invite(
     if other:
         raise HTTPException(409, "You are already in another team of this competition")
 
-    # Максимум состава
+    # Максимум состава.
     if comp.max_team_size is not None and _accepted_size(db, team.id) >= comp.max_team_size:
         raise HTTPException(409, "Team is full")
 
@@ -441,6 +461,43 @@ def accept_invite(
     )
     db.commit()
     db.refresh(m)
+
+    # ── Уведомление капитану ──────────────────────────────────────────
+    from . import notification_service
+
+    # Капитану — если принимает не он сам.
+    if team.captain_id != actor.id:
+        notification_service.push(
+            db, user_id=team.captain_id,
+            type="team.invite.accepted",
+            title="Участник принял приглашение",
+            message=f"{actor.username} → {team.name}",
+            level="success",
+            link=f"/competitions/{comp.slug}/team",
+            payload={
+                "team_id": team.id,
+                "competition_id": comp.id,
+                "user_id": actor.id,
+                "username": actor.username,
+            },
+        )
+
+    # ── Уведомление участнику о принятии ──────────────────────────────
+    # Полезно, если он принял приглашение в фоне и хочет видеть пуш.
+    notification_service.push(
+        db, user_id=actor.id,
+        type="team.joined",
+        title="Вы вступили в команду",
+        message=f"{team.name} · {comp.title}",
+        level="success",
+        link=f"/competitions/{comp.slug}/team",
+        payload={
+            "team_id": team.id,
+            "competition_id": comp.id,
+            "team_name": team.name,
+        },
+    )
+
     return m
 
 

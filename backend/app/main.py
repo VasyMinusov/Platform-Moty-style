@@ -8,11 +8,14 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, SessionLocal
+from .config import settings
+from .middleware.rate_limit import RateLimitMiddleware
 from .routers import (
     auth, challenges, admin, writeups, lessons,
     competitions, competitions_teams, competitions_challenges,
     competitions_instances, competitions_leaderboard,
     competitions_dashboard, competitions_appeals, competitions_ws,
+    notifications,
 )
 from .services import challenge_registry
 from .models import User, UserRole
@@ -31,6 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if settings.rate_limit_enabled:
+    app.add_middleware(RateLimitMiddleware)
+
 app.include_router(auth.router)
 app.include_router(challenges.router)
 app.include_router(admin.router)
@@ -47,6 +53,7 @@ app.include_router(competitions_dashboard.router)
 app.include_router(competitions_appeals.router)
 app.include_router(competitions_appeals.admin_router)
 app.include_router(competitions_ws.router)
+app.include_router(notifications.router)
 
 # ── Alembic ──────────────────────────────────────────────────────────
 

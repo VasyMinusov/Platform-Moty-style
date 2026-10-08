@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 
 from .database import Base
 
+from . import models_notifications  # noqa: E402,F401
 
 class UserRole(str, enum.Enum):
     student = "student"

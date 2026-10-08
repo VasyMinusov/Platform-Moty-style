@@ -35,3 +35,5 @@ to_text.sh
 all_files_content.txt
 challenges_insert.sql
 writeups_insert.sql
+
+DEV_PLAN.md

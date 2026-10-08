@@ -442,6 +442,46 @@ def decide_application(
     )
     db.commit()
     db.refresh(a)
+
+    # ── Уведомление участнику ─────────────────────────────────────────
+    from . import notification_service
+
+    link = f"/competitions/{c.slug}"
+    if a.status == ApplicationStatus.approved:
+        notification_service.push(
+            db, user_id=a.user_id,
+            type="application.approved",
+            title="Заявка одобрена",
+            message=c.title,
+            level="success",
+            link=link,
+            payload={"competition_id": c.id, "application_id": a.id},
+        )
+    elif a.status == ApplicationStatus.rejected:
+        notification_service.push(
+            db, user_id=a.user_id,
+            type="application.rejected",
+            title="Заявка отклонена",
+            message=c.title + (f" · {a.decision_comment}" if a.decision_comment else ""),
+            level="danger",
+            link=link,
+            payload={
+                "competition_id": c.id,
+                "application_id": a.id,
+                "comment": a.decision_comment,
+            },
+        )
+    elif a.status == ApplicationStatus.waitlist:
+        notification_service.push(
+            db, user_id=a.user_id,
+            type="application.waitlist",
+            title="Заявка в листе ожидания",
+            message=c.title,
+            level="warning",
+            link=link,
+            payload={"competition_id": c.id, "application_id": a.id},
+        )
+
     return a
 
 
