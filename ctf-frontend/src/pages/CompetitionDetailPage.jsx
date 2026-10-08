@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../context/NotificationsContext'
 import { useCompetitionStream } from '../api/competitionsStream'
 import './CompetitionDetailPage.css'
 
@@ -24,7 +25,7 @@ function formatDt(iso) {
 export default function CompetitionDetailPage() {
   const { slug } = useParams()
   const { token, role } = useAuth()
-  const navigate = useNavigate()
+  const { push } = useNotifications()
 
   const [tab, setTab] = useState('overview')
   const [comp, setComp] = useState(null)
@@ -95,7 +96,11 @@ export default function CompetitionDetailPage() {
           {comp.status}
         </span>
         <span>·</span>
-        <span>{comp.mode === 'individual' ? 'индивидуальное' : comp.mode === 'team' ? 'командное' : 'индивид.+команды'}</span>
+        <span>
+          {comp.mode === 'individual' ? 'индивидуальное'
+            : comp.mode === 'team' ? 'командное'
+            : 'индивид.+команды'}
+        </span>
         <span>·</span>
         <span>регистрация: {formatDt(comp.registration_opens_at)} → {formatDt(comp.registration_closes_at)}</span>
         <span>·</span>
@@ -117,13 +122,13 @@ export default function CompetitionDetailPage() {
       </div>
 
       {tab === 'overview' && (
-        <OverviewTab comp={comp} myApp={myApp} myTeam={myTeam} onReload={load} />
+        <OverviewTab comp={comp} myApp={myApp} myTeam={myTeam} onReload={load} push={push} />
       )}
       {tab === 'challenges' && (
-        <ChallengesTab slug={slug} />
+        <ChallengesTab slug={slug} push={push} />
       )}
       {tab === 'leaderboard' && (
-        <LeaderboardTab slug={slug} token={token} />
+        <LeaderboardTab slug={slug} token={token} push={push} />
       )}
       {tab === 'rules' && (
         <div className="comp-markdown">
@@ -137,6 +142,7 @@ export default function CompetitionDetailPage() {
           myTeam={myTeam}
           invitations={invitations}
           onReload={load}
+          push={push}
         />
       )}
     </div>
@@ -145,7 +151,7 @@ export default function CompetitionDetailPage() {
 
 // ── Overview ────────────────────────────────────────────────────────
 
-function OverviewTab({ comp, myApp, myTeam, onReload }) {
+function OverviewTab({ comp, myApp, myTeam, onReload, push }) {
   const { isAuthenticated } = useAuth()
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -161,6 +167,13 @@ function OverviewTab({ comp, myApp, myTeam, onReload }) {
     setErr(null)
     try {
       await api.applyToCompetition(comp.slug, {})
+      push?.({
+        type: 'application.created',
+        title: 'Заявка подана',
+        message: comp.title,
+        level: 'success',
+        link: `/competitions/${comp.slug}`,
+      })
       await onReload()
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Ошибка')
@@ -206,7 +219,7 @@ function OverviewTab({ comp, myApp, myTeam, onReload }) {
 
 // ── Challenges ──────────────────────────────────────────────────────
 
-function ChallengesTab({ slug }) {
+function ChallengesTab({ slug, push }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -238,20 +251,25 @@ function ChallengesTab({ slug }) {
   return (
     <div className="challenge-list">
       {items.map((ch) => (
-        <CompetitionChallengeCard key={ch.id} slug={slug} challenge={ch} onSolved={load} />
+        <CompetitionChallengeCard
+          key={ch.id}
+          slug={slug}
+          challenge={ch}
+          onSolved={load}
+          push={push}
+        />
       ))}
     </div>
   )
 }
 
-function CompetitionChallengeCard({ slug, challenge, onSolved }) {
+function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
   const [expanded, setExpanded] = useState(false)
   const [instance, setInstance] = useState(null)
   const [flag, setFlag] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
-  const [hints, setHints] = useState([])
   const [purchased, setPurchased] = useState([])
 
   useEffect(() => {
@@ -289,6 +307,13 @@ function CompetitionChallengeCard({ slug, challenge, onSolved }) {
       const data = await api.submitCompetitionFlag(slug, challenge.slug, flag)
       setResult(data)
       if (data.correct) {
+        push?.({
+          type: 'challenge.solved',
+          title: data.is_first_blood ? 'First blood!' : 'Задание решено',
+          message: `${challenge.title} · +${data.points_awarded} pts`,
+          level: data.is_first_blood ? 'warning' : 'success',
+          link: `/competitions/${slug}`,
+        })
         setFlag('')
         setInstance(null)
         onSolved?.()
@@ -303,6 +328,12 @@ function CompetitionChallengeCard({ slug, challenge, onSolved }) {
     try {
       const h = await api.buyHint(slug, challenge.slug, idx)
       setPurchased((p) => [...p, h])
+      push?.({
+        type: 'hint.purchased',
+        title: 'Подсказка куплена',
+        message: `${challenge.title} · −${h.cost_paid} pts`,
+        level: 'warning',
+      })
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось купить подсказку')
     } finally { setBusy(false) }
@@ -422,7 +453,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved }) {
 
 // ── Leaderboard ─────────────────────────────────────────────────────
 
-function LeaderboardTab({ slug, token }) {
+function LeaderboardTab({ slug, token, push }) {
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -435,8 +466,17 @@ function LeaderboardTab({ slug, token }) {
   }, [slug])
 
   useCompetitionStream(slug, token, (event) => {
-    if (event.type === 'leaderboard.snapshot' || event.type === 'solve.created') {
-      // Простой рефетч — на MVP достаточно.
+    if (event.type === 'leaderboard.snapshot') {
+      api.getLeaderboard(slug).then(setSnapshot).catch(() => {})
+    } else if (event.type === 'solve.created') {
+      const d = event.data || {}
+      push?.({
+        type: 'solve.created',
+        title: d.is_first_blood ? 'First blood!' : 'Новое решение',
+        message: `${d.challenge_slug} · +${d.points ?? 0} pts`,
+        level: d.is_first_blood ? 'warning' : 'info',
+        link: `/competitions/${slug}`,
+      })
       api.getLeaderboard(slug).then(setSnapshot).catch(() => {})
     }
   })
@@ -490,7 +530,7 @@ function LeaderboardTab({ slug, token }) {
 
 // ── My application ──────────────────────────────────────────────────
 
-function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload }) {
+function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -499,6 +539,12 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload }) {
     setBusy(true); setError(null)
     try {
       await api.withdrawFromCompetition(comp.slug)
+      push?.({
+        type: 'application.withdrawn',
+        title: 'Заявка отозвана',
+        message: comp.title,
+        level: 'info',
+      })
       await onReload()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
@@ -537,6 +583,12 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload }) {
                     className="btn btn-primary"
                     onClick={async () => {
                       await api.acceptInvite(comp.slug, t.id)
+                      push?.({
+                        type: 'team.invite.accepted',
+                        title: 'Вы приняли приглашение',
+                        message: t.name,
+                        level: 'success',
+                      })
                       await onReload()
                     }}
                   >
@@ -546,6 +598,12 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload }) {
                     className="btn"
                     onClick={async () => {
                       await api.declineInvite(comp.slug, t.id)
+                      push?.({
+                        type: 'team.invite.declined',
+                        title: 'Приглашение отклонено',
+                        message: t.name,
+                        level: 'info',
+                      })
                       await onReload()
                     }}
                   >

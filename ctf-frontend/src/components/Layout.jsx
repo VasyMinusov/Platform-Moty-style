@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
+import NotificationsBell from './NotificationsBell'
+import Toasts from './Toasts'
 import './Layout.css'
 
 const NetworkBackground = lazy(() => import('./NetworkBackground'))
@@ -13,7 +15,7 @@ const NAV_ITEMS = [
   { to: '/lessons', label: 'Библиотека', code: '05' },
 ]
 
-// Модератор и админ: просмотр пользователей
+// Модератор и админ: просмотр пользователей и управление соревнованиями
 const STAFF_ITEMS = [
   { to: '/users', label: 'Пользователи', code: '06' },
   { to: '/admin/competitions', label: 'Соревнования', code: '07' },
@@ -28,7 +30,7 @@ export default function Layout({ children }) {
   const { isAuthenticated, username, role, logout } = useAuth()
   const isAdmin = role === 'admin'
   const isModerator = role === 'moderator'
-  const canViewUsers = isAdmin || isModerator
+  const canViewStaff = isAdmin || isModerator
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -67,7 +69,7 @@ export default function Layout({ children }) {
                   {item.label}
                 </NavLink>
               ))}
-              {canViewUsers && STAFF_ITEMS.map((item) => (
+              {canViewStaff && STAFF_ITEMS.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -93,6 +95,7 @@ export default function Layout({ children }) {
           <div className="shell-actions">
             {isAuthenticated ? (
               <>
+                <NotificationsBell />
                 <span className="mono operator-tag">
                   оператор: <strong>{username}</strong>
                   {isAdmin && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>[admin]</span>}
@@ -112,8 +115,7 @@ export default function Layout({ children }) {
 
         <main className="shell-main">{children}</main>
       </div>
+      <Toasts />
     </>
   )
 }
-
-
