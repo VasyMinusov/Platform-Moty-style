@@ -1,13 +1,6 @@
-"""Pydantic-схемы модуля «Соревнования».
-
-Здесь только то, что нужно для Фазы 1:
-- scoring_config
-- network_config
-- manifest + metadata по типам заданий
-- базовые Out-схемы
-"""
+"""Pydantic-схемы модуля «Соревнования»."""
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -64,10 +57,6 @@ class ScoringConfig(BaseModel):
     bonuses: list[BonusConfig] = Field(default_factory=list)
     team_scoring: Literal["sum_of_members", "team_only"] = "team_only"
 
-
-# ══════════════════════════════════════════════════════════════════════
-# Network config
-# ══════════════════════════════════════════════════════════════════════
 
 class NetworkConfig(BaseModel):
     isolated: bool = True
@@ -193,12 +182,12 @@ class Manifest(BaseModel):
         return self
 
     def validate_metadata(self) -> BaseModel:
-        schema = METADATA_SCHEMAS.get(self.type, MiscMeta)
+        schema = METADATA_CLASS = METADATA_SCHEMAS.get(self.type, MiscMeta)
         return schema.model_validate(self.metadata)
 
 
 # ══════════════════════════════════════════════════════════════════════
-# Out-схемы (минимальные, для Фазы 1)
+# Competition: In / Out / Update
 # ══════════════════════════════════════════════════════════════════════
 
 class CompetitionOut(BaseModel):
@@ -206,6 +195,8 @@ class CompetitionOut(BaseModel):
     slug: str
     title: str
     summary: str
+    description_md: str
+    rules_md: str
     visibility: str
     mode: str
     status: str
@@ -213,7 +204,47 @@ class CompetitionOut(BaseModel):
     registration_closes_at: Optional[datetime] = None
     starts_at: Optional[datetime] = None
     ends_at: Optional[datetime] = None
+    allow_late_application: bool
+    allow_late_withdraw: bool
+    max_participants: Optional[int] = None
+    max_teams: Optional[int] = None
+    min_team_size: Optional[int] = None
+    max_team_size: Optional[int] = None
+    public_team_roster: bool
+    leaderboard_visibility: str
+    tie_breaker: str
+    scoring_config: dict
+    network_config: dict
+    port_range_start: Optional[int] = None
+    port_range_end: Optional[int] = None
+    instance_ttl_seconds: int
+    max_instances_per_user: Optional[int] = None
+    max_instances_per_team: Optional[int] = None
+    max_instances_per_competition: Optional[int] = None
+    created_by: int
     created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CompetitionListItem(BaseModel):
+    """Короткая карточка анонса."""
+    id: int
+    slug: str
+    title: str
+    summary: str
+    visibility: str
+    mode: str
+    status: str
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+    registration_opens_at: Optional[datetime] = None
+    registration_closes_at: Optional[datetime] = None
+    min_team_size: Optional[int] = None
+    max_team_size: Optional[int] = None
+    max_participants: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -242,8 +273,6 @@ class CompetitionCreate(BaseModel):
     tie_breaker: Literal["last_solve_time", "first_solve_time", "solves_count", "alphabetic"] = "last_solve_time"
     scoring_config: ScoringConfig = Field(default_factory=ScoringConfig)
     network_config: NetworkConfig = Field(default_factory=NetworkConfig)
-    port_range_start: Optional[int] = None
-    port_range_end: Optional[int] = None
     instance_ttl_seconds: int = 3600
     max_instances_per_user: Optional[int] = None
     max_instances_per_team: Optional[int] = None
@@ -256,3 +285,168 @@ class CompetitionCreate(BaseModel):
         if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", v or ""):
             raise ValueError("slug must be kebab-case")
         return v
+
+    @model_validator(mode="after")
+    def _check_dates(self):
+        if self.starts_at and self.ends_at and self.starts_at >= self.ends_at:
+            raise ValueError("starts_at must be before ends_at")
+        if self.registration_opens_at and self.registration_closes_at \
+                and self.registration_opens_at >= self.registration_closes_at:
+            raise ValueError("registration_opens_at must be before registration_closes_at")
+        if self.mode in ("team", "both"):
+            if self.min_team_size is not None and self.max_team_size is not None \
+                    and self.min_team_size > self.max_team_size:
+                raise ValueError("min_team_size cannot exceed max_team_size")
+        return self
+
+
+class CompetitionUpdate(BaseModel):
+    """Все поля опциональны. Менять можно только в статусах draft/announced.
+    После старта — только отдельными endpoint'ами (pause/resume/finish)."""
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    description_md: Optional[str] = None
+    rules_md: Optional[str] = None
+    visibility: Optional[Literal["public", "private", "hidden"]] = None
+    mode: Optional[Literal["individual", "team", "both"]] = None
+    registration_opens_at: Optional[datetime] = None
+    registration_closes_at: Optional[datetime] = None
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+    allow_late_application: Optional[bool] = None
+    allow_late_withdraw: Optional[bool] = None
+    max_participants: Optional[int] = None
+    max_teams: Optional[int] = None
+    min_team_size: Optional[int] = None
+    max_team_size: Optional[int] = None
+    public_team_roster: Optional[bool] = None
+    leaderboard_visibility: Optional[Literal["public", "participants", "hidden"]] = None
+    tie_breaker: Optional[Literal["last_solve_time", "first_solve_time", "solves_count", "alphabetic"]] = None
+    scoring_config: Optional[ScoringConfig] = None
+    network_config: Optional[NetworkConfig] = None
+    instance_ttl_seconds: Optional[int] = None
+    max_instances_per_user: Optional[int] = None
+    max_instances_per_team: Optional[int] = None
+    max_instances_per_competition: Optional[int] = None
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Moderators
+# ══════════════════════════════════════════════════════════════════════
+
+class ModeratorAdd(BaseModel):
+    user_id: int
+    role: Literal["responsible", "helper"] = "helper"
+
+
+class ModeratorOut(BaseModel):
+    user_id: int
+    username: str
+    role: str
+    added_by: int
+    added_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Applications
+# ══════════════════════════════════════════════════════════════════════
+
+class ApplicationCreate(BaseModel):
+    motivation: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class ApplicationDecision(BaseModel):
+    status: Literal["approved", "rejected", "waitlist"]
+    comment: Optional[str] = None
+
+
+class ApplicationOut(BaseModel):
+    id: int
+    competition_id: int
+    user_id: int
+    username: str
+    team_id: Optional[int] = None
+    motivation: Optional[str] = None
+    comment: Optional[str] = None
+    status: str
+    applied_at: datetime
+    decided_at: Optional[datetime] = None
+    decided_by: Optional[int] = None
+    decision_comment: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Audit
+# ══════════════════════════════════════════════════════════════════════
+
+class AuditOut(BaseModel):
+    id: int
+    competition_id: int
+    actor_id: Optional[int] = None
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    payload_json: dict
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ══════════════════════════════════════════════════════════════════════
+# Teams
+# ══════════════════════════════════════════════════════════════════════
+
+class TeamCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=128)
+
+
+class TeamUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=128)
+
+
+class TeamInvite(BaseModel):
+    username: str
+
+
+class TeamJoinByCode(BaseModel):
+    invite_code: str
+
+
+class TeamMemberOut(BaseModel):
+    user_id: int
+    username: str
+    role: str
+    status: str
+    invited_at: datetime
+    joined_at: Optional[datetime] = None
+
+
+class TeamOut(BaseModel):
+    id: int
+    competition_id: int
+    name: str
+    captain_id: int
+    captain_username: str
+    status: str
+    invite_code: Optional[str] = None   # только для участников команды
+    created_at: datetime
+    members: list[TeamMemberOut] = []
+    member_count: int = 0
+    min_team_size: Optional[int] = None
+    max_team_size: Optional[int] = None
+
+
+class TeamSummary(BaseModel):
+    """Короткая карточка для списка команд."""
+    id: int
+    name: str
+    captain_username: str
+    status: str
+    member_count: int

@@ -8,7 +8,10 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, SessionLocal
-from .routers import auth, challenges, admin, writeups, lessons
+from .routers import (
+    auth, challenges, admin, writeups, lessons,
+    competitions, competitions_teams,
+)
 from .services import challenge_registry
 from .models import User, UserRole
 from .security import hash_password
@@ -31,8 +34,9 @@ app.include_router(challenges.router)
 app.include_router(admin.router)
 app.include_router(writeups.router)
 app.include_router(lessons.router)
-
-
+app.include_router(competitions.router)
+app.include_router(competitions.admin_router)
+app.include_router(competitions_teams.router)
 # ── Alembic ──────────────────────────────────────────────────────────
 
 def _alembic_config():
