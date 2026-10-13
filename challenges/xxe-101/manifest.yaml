@@ -1,4 +1,6 @@
 title: "XXE: Парсер отчётов"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "medium"
 points: 180

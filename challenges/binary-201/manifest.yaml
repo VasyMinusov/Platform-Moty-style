@@ -1,4 +1,6 @@
 title: "Buffer Overflow 201"
+type: "pwn"
+kind: "docker"
 category: "pwn"
 difficulty: "medium"
 points: 300

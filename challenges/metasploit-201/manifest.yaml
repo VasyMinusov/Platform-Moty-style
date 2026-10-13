@@ -1,10 +1,12 @@
 title: "Metasploit Tomcat 201"
+type: "pwn"
+kind: "docker"
 category: "pwn"
 difficulty: "medium"
 points: 300
 description: >
-  Старый Apache Tomcat с управляющим интерфейсом manager.\n
-  Админ забыл сменить стандартный пароль. Используйте Metasploit,\n
+  Старый Apache Tomcat с управляющим интерфейсом manager.
+  Админ забыл сменить стандартный пароль. Используйте Metasploit,
   получите shell и заберите флаг.
 flag: "flag{m3t4spl01t_t0mc4t_mgr_0wn3d}"
 container_port: 5000

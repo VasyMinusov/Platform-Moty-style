@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+# Флаг передаётся в образ, чтобы значение совпадало с манифестом.
+ENV FLAG=flag{w1r3sh4rk_rul3s_th3_n3t}
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tshark \
     && rm -rf /var/lib/apt/lists/*

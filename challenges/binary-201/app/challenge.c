@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 void print_flag() {
-    FILE *f = fopen("/flag.txt", "r");
+    FILE *f = fopen("/tmp/flag.txt", "r");
     if (!f) {
         puts("[-] cannot open flag");
         return;

@@ -16,13 +16,14 @@ COPY app/ .
 RUN gcc -fno-stack-protector -no-pie -z execstack -o challenge challenge.c \
     && chmod +x challenge
 
-# Флаг для чтения бинарем
-ARG FLAG=flag{b0f_r3tw1n_4_sm00th_v1ct0ry}
-RUN echo "$FLAG" > /flag.txt && chmod 644 /flag.txt
-
-RUN chmod -R a+rX /app
+# Точка входа: пишет флаг в /tmp/flag.txt из переменной окружения FLAG
+# (которую подставляет оркестратор для динамических флагов), а если
+# переменной нет — использует статический дефолт.
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+    && chmod -R a+rX /app
 
 USER appuser
 EXPOSE 5000
 
-CMD ["python", "server.py"]
+ENTRYPOINT ["/entrypoint.sh"]

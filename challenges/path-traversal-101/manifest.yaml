@@ -1,4 +1,6 @@
 title: "Path Traversal: Библиотека документов"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "medium"
 points: 150

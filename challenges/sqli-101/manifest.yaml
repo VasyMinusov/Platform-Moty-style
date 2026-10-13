@@ -1,4 +1,6 @@
 title: "SQL Injection 101"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "easy"
 points: 100

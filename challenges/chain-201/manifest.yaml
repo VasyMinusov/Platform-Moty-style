@@ -1,4 +1,6 @@
 title: "Chain Reaction: IDOR → SSRF → RCE"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "hard"
 points: 400

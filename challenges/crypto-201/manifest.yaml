@@ -1,4 +1,6 @@
 title: "Padding Oracle 201"
+type: "crypto"
+kind: "docker"
 category: "crypto"
 difficulty: "medium"
 points: 300

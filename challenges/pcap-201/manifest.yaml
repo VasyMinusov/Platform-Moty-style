@@ -1,4 +1,6 @@
 title: "PCAP Forensics 201"
+type: "forensics"
+kind: "docker"
 category: "forensics"
 difficulty: "medium"
 points: 200

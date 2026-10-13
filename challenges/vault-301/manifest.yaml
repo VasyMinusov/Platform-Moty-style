@@ -1,4 +1,6 @@
 title: "The Vault: JWT None → SSTI → Pickle RCE"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "hard"
 points: 500

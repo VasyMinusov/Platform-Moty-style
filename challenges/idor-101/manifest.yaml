@@ -1,4 +1,6 @@
 title: "IDOR: Чужие заметки"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "easy"
 points: 120

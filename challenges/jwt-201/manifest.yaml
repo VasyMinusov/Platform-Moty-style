@@ -1,4 +1,6 @@
 title: "JWT Weak Secret 201"
+type: "web"
+kind: "docker"
 category: "web"
 difficulty: "medium"
 points: 200
