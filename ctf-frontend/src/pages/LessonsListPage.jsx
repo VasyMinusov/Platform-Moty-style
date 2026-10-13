@@ -54,7 +54,9 @@ export default function LessonsListPage() {
       {error && <div className="alert">{error}</div>}
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : lessons.length === 0 ? (
         <div className="lessons-empty">
           <p>В библиотеке пока нет занятий.</p>
@@ -78,10 +80,14 @@ export default function LessonsListPage() {
                 обновлено: {new Date(l.updated_at).toLocaleString('ru-RU')}
               </span>
               <div className="actions">
-                <Link to={`/lessons/${l.slug}`} className="btn">Открыть</Link>
+                <Link to={`/lessons/${l.slug}`} className="btn">
+                  Открыть
+                </Link>
                 {canManageLessons && (
                   <>
-                    <Link to={`/lessons/${l.slug}/edit`} className="btn">Редактировать</Link>
+                    <Link to={`/lessons/${l.slug}/edit`} className="btn">
+                      Редактировать
+                    </Link>
                     <button className="btn btn-danger" onClick={() => handleDelete(l.slug)}>
                       Удалить
                     </button>

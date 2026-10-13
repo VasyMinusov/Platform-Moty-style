@@ -182,9 +182,17 @@
   margin-top: 0;
 }
 
-.markdown-body h1 { font-size: 24px; }
-.markdown-body h2 { font-size: 19px; border-bottom: 1px solid var(--border-soft); padding-bottom: 6px; }
-.markdown-body h3 { font-size: 16px; }
+.markdown-body h1 {
+  font-size: 24px;
+}
+.markdown-body h2 {
+  font-size: 19px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+.markdown-body h3 {
+  font-size: 16px;
+}
 
 .markdown-body p {
   margin: 0.6em 0;

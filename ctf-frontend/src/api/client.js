@@ -28,14 +28,20 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
     finalHeaders['Authorization'] = `Bearer ${token}`
   }
 
+  // Fetch API запрещает body для GET/HEAD — добавляем его только если это
+  // осмысленно. Иначе Firefox/Safari бросают TypeError.
+  const fetchOptions = {
+    method,
+    headers: finalHeaders,
+  }
+  if (finalBody !== undefined && method !== 'GET' && method !== 'HEAD') {
+    fetchOptions.body = finalBody
+  }
+
   let response
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: finalHeaders,
-      body: finalBody,
-    })
-  } catch (networkErr) {
+    response = await fetch(`${BASE_URL}${path}`, fetchOptions)
+  } catch (_networkErr) {
     throw new ApiError('Не удалось связаться с сервером платформы', 0, null)
   }
 

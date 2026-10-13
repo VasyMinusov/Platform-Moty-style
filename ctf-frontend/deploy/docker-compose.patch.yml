@@ -3,9 +3,9 @@
 # на deploy/nginx.conf из этого репозитория, чтобы nginx начал раздавать
 # frontend вместо того, чтобы проксировать "/" напрямую на backend.
 
-  frontend:
-    build: ../ctf-frontend   # путь до этого фронтенд-репозитория
-    restart: unless-stopped
-    networks:
-      - platform_net
-    # порт наружу не нужен — nginx обращается к frontend:80 изнутри сети
+frontend:
+  build: ../ctf-frontend # путь до этого фронтенд-репозитория
+  restart: unless-stopped
+  networks:
+    - platform_net
+  # порт наружу не нужен — nginx обращается к frontend:80 изнутри сети

@@ -19,8 +19,14 @@ const NEXT_ACTIONS = {
   announced: [['open-registration', 'Открыть регистрацию']],
   registration_open: [['close-registration', 'Закрыть регистрацию']],
   registration_closed: [['start', 'Запустить']],
-  running: [['pause', 'Пауза'], ['finish', 'Завершить']],
-  paused: [['resume', 'Продолжить'], ['finish', 'Завершить']],
+  running: [
+    ['pause', 'Пауза'],
+    ['finish', 'Завершить'],
+  ],
+  paused: [
+    ['resume', 'Продолжить'],
+    ['finish', 'Завершить'],
+  ],
   finished: [],
   cancelled: [],
 }
@@ -33,56 +39,73 @@ export default function AdminCompetitionsListPage() {
   const [filter, setFilter] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   async function load() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     try {
       setItems(await api.adminListCompetitions())
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка загрузки')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function runAction(slug, action) {
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     const fn = {
-      'publish': api.adminPublishCompetition,
+      publish: api.adminPublishCompetition,
       'open-registration': api.adminOpenRegistration,
       'close-registration': api.adminCloseRegistration,
-      'start': api.adminStartCompetition,
-      'pause': api.adminPauseCompetition,
-      'resume': api.adminResumeCompetition,
-      'finish': api.adminFinishCompetition,
-      'cancel': api.adminCancelCompetition,
+      start: api.adminStartCompetition,
+      pause: api.adminPauseCompetition,
+      resume: api.adminResumeCompetition,
+      finish: api.adminFinishCompetition,
+      cancel: api.adminCancelCompetition,
     }[action]
     try {
-      if (action === 'finish' && !confirm('Завершить соревнование? Все инстансы будут остановлены.')) return
+      if (
+        action === 'finish' &&
+        !confirm('Завершить соревнование? Все инстансы будут остановлены.')
+      )
+        return
       if (action === 'cancel' && !confirm('Отменить соревнование?')) return
       await fn(slug)
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function remove(slug) {
     if (!confirm(`Удалить соревнование "${slug}"?`)) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.adminDeleteCompetition(slug)
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   const q = filter.trim().toLowerCase()
   const visible = q
-    ? items.filter((c) =>
-        c.slug.toLowerCase().includes(q) ||
-        c.title.toLowerCase().includes(q) ||
-        c.status.toLowerCase().includes(q))
+    ? items.filter(
+        (c) =>
+          c.slug.toLowerCase().includes(q) ||
+          c.title.toLowerCase().includes(q) ||
+          c.status.toLowerCase().includes(q)
+      )
     : items
 
   return (
@@ -104,15 +127,21 @@ export default function AdminCompetitionsListPage() {
           onChange={(e) => setFilter(e.target.value)}
           placeholder="поиск по slug, названию, статусу…"
         />
-        <button className="btn" onClick={load} disabled={loading}>Обновить</button>
+        <button className="btn" onClick={load} disabled={loading}>
+          Обновить
+        </button>
       </div>
 
       {error && <div className="alert">{error}</div>}
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : visible.length === 0 ? (
-        <div className="empty-state"><p>Соревнований нет.</p></div>
+        <div className="empty-state">
+          <p>Соревнований нет.</p>
+        </div>
       ) : (
         <div className="adm-table-wrap">
           <table className="adm-table">

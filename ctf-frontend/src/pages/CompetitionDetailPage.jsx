@@ -67,22 +67,26 @@ export default function CompetitionDetailPage() {
       setMyTeam(team)
       setInvitations(invs || [])
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Не удалось загрузить соревнование',
-      )
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить соревнование')
     } finally {
       setLoading(false)
     }
   }
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
   if (error) {
     return (
       <div>
         <div className="alert">{error}</div>
-        <Link to="/competitions" className="btn">← К списку</Link>
+        <Link to="/competitions" className="btn">
+          ← К списку
+        </Link>
       </div>
     )
   }
@@ -97,12 +101,11 @@ export default function CompetitionDetailPage() {
           <p className="comp-detail-summary">{comp.summary}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link to="/competitions" className="btn">← К списку</Link>
+          <Link to="/competitions" className="btn">
+            ← К списку
+          </Link>
           {isStaff && (
-            <Link
-              to={`/admin/competitions/${comp.slug}/edit`}
-              className="btn btn-primary"
-            >
+            <Link to={`/admin/competitions/${comp.slug}/edit`} className="btn btn-primary">
               Редактировать
             </Link>
           )}
@@ -110,9 +113,7 @@ export default function CompetitionDetailPage() {
       </div>
 
       <div className="comp-meta mono">
-        <span className={`comp-status comp-status-${comp.status}`}>
-          {comp.status}
-        </span>
+        <span className={`comp-status comp-status-${comp.status}`}>{comp.status}</span>
         <span>·</span>
         <span>
           {comp.mode === 'individual'
@@ -145,18 +146,10 @@ export default function CompetitionDetailPage() {
       </div>
 
       {tab === 'overview' && (
-        <OverviewTab
-          comp={comp}
-          myApp={myApp}
-          myTeam={myTeam}
-          onReload={load}
-          push={push}
-        />
+        <OverviewTab comp={comp} myApp={myApp} myTeam={myTeam} onReload={load} push={push} />
       )}
       {tab === 'challenges' && <ChallengesTab slug={slug} push={push} />}
-      {tab === 'leaderboard' && (
-        <LeaderboardTab slug={slug} token={token} push={push} />
-      )}
+      {tab === 'leaderboard' && <LeaderboardTab slug={slug} token={token} push={push} />}
       {tab === 'rules' && (
         <div className="comp-markdown">
           <pre>{comp.rules_md || 'Правила не заданы.'}</pre>
@@ -230,7 +223,9 @@ function OverviewTab({ comp, myApp, myTeam, onReload, push }) {
       {!isAuthenticated && (
         <div className="comp-cta">
           <p>Войдите, чтобы подать заявку на участие.</p>
-          <Link to="/login" className="btn btn-primary">Войти</Link>
+          <Link to="/login" className="btn btn-primary">
+            Войти
+          </Link>
         </div>
       )}
 
@@ -262,16 +257,18 @@ function ChallengesTab({ slug, push }) {
     try {
       setItems(await api.listCompetitionChallenges(slug))
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Не удалось загрузить задания',
-      )
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить задания')
     } finally {
       setLoading(false)
     }
   }
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
   if (error) return <div className="alert">{error}</div>
   if (items.length === 0) {
@@ -382,9 +379,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
         level: 'warning',
       })
     } catch (e) {
-      setError(
-        e instanceof ApiError ? e.message : 'Не удалось купить подсказку',
-      )
+      setError(e instanceof ApiError ? e.message : 'Не удалось купить подсказку')
     } finally {
       setBusy(false)
     }
@@ -396,7 +391,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
     try {
       await downloadAndSave(
         `/competitions/${slug}/challenges/${challenge.slug}/files/${f.id}`,
-        f.filename,
+        f.filename
       )
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Не удалось скачать файл')
@@ -410,18 +405,13 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
   const filesArr = challenge.files || []
 
   return (
-    <article
-      className={`case-card${challenge.solved ? ' solved' : ''}${expanded ? ' open' : ''}`}
-    >
+    <article className={`case-card${challenge.solved ? ' solved' : ''}${expanded ? ' open' : ''}`}>
       <button className="case-card-head" onClick={() => setExpanded((v) => !v)}>
-        <span className={`diff-stamp diff-${challenge.difficulty}`}>
-          {challenge.difficulty}
-        </span>
+        <span className={`diff-stamp diff-${challenge.difficulty}`}>{challenge.difficulty}</span>
         <div className="case-card-title">
           <h3>{challenge.title}</h3>
           <span className="mono case-card-meta">
-            {challenge.type} · {challenge.category} · {challenge.points} pts · #
-            {challenge.slug}
+            {challenge.type} · {challenge.category} · {challenge.points} pts · #{challenge.slug}
           </span>
         </div>
         <div className="case-card-status">
@@ -446,11 +436,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
           {challenge.kind === 'docker' && (
             <div className="instance-controls">
               {!instance ? (
-                <button
-                  className="btn btn-primary"
-                  onClick={start}
-                  disabled={busy}
-                >
+                <button className="btn btn-primary" onClick={start} disabled={busy}>
                   {busy ? 'Запуск…' : 'Запустить инстанс'}
                 </button>
               ) : (
@@ -465,11 +451,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
                       {instance.url} ↗
                     </a>
                   </div>
-                  <button
-                    className="btn btn-danger"
-                    onClick={stop}
-                    disabled={busy}
-                  >
+                  <button className="btn btn-danger" onClick={stop} disabled={busy}>
                     Остановить
                   </button>
                 </>
@@ -479,10 +461,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
 
           {challenge.kind === 'static' && filesArr.length === 0 && (
             <div className="instance-controls">
-              <p
-                className="mono"
-                style={{ fontSize: 12, color: 'var(--text-dim)' }}
-              >
+              <p className="mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                 Статическое задание — файлы ещё не загружены.
               </p>
             </div>
@@ -495,9 +474,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
                 {filesArr.map((f) => (
                   <li key={f.id} className="challenge-file">
                     <span className="mono challenge-file-name">{f.filename}</span>
-                    <span className="mono challenge-file-size">
-                      {formatSize(f.size)}
-                    </span>
+                    <span className="mono challenge-file-size">{formatSize(f.size)}</span>
                     <button
                       className="btn"
                       disabled={downloading === f.id}
@@ -520,11 +497,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
               disabled={busy || challenge.solved}
               required
             />
-            <button
-              className="btn"
-              type="submit"
-              disabled={busy || challenge.solved}
-            >
+            <button className="btn" type="submit" disabled={busy || challenge.solved}>
               {challenge.solved ? 'Решено' : 'Отправить'}
             </button>
           </form>
@@ -540,11 +513,7 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
                       {owned ? h.text : `Подсказка #${idx + 1} (${h.cost} pts)`}
                     </div>
                     {!owned && (
-                      <button
-                        className="btn"
-                        disabled={busy}
-                        onClick={() => buyHint(idx)}
-                      >
+                      <button className="btn" disabled={busy} onClick={() => buyHint(idx)}>
                         Купить
                       </button>
                     )}
@@ -576,7 +545,10 @@ function LeaderboardTab({ slug, token, push }) {
 
   useCompetitionStream(slug, token, (event) => {
     if (event.type === 'leaderboard.snapshot') {
-      api.getLeaderboard(slug).then(setSnapshot).catch(() => {})
+      api
+        .getLeaderboard(slug)
+        .then(setSnapshot)
+        .catch(() => {})
     } else if (event.type === 'solve.created') {
       const d = event.data || {}
       push?.({
@@ -586,12 +558,19 @@ function LeaderboardTab({ slug, token, push }) {
         level: d.is_first_blood ? 'warning' : 'info',
         link: `/competitions/${slug}`,
       })
-      api.getLeaderboard(slug).then(setSnapshot).catch(() => {})
+      api
+        .getLeaderboard(slug)
+        .then(setSnapshot)
+        .catch(() => {})
     }
   })
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
   if (error) return <div className="alert">{error}</div>
   if (!snapshot) return null
@@ -628,9 +607,7 @@ function LeaderboardTab({ slug, token, push }) {
                 <td className="mono lb-score">{r.score}</td>
                 <td className="mono">{r.solves_count}</td>
                 <td className="mono lb-time">
-                  {r.last_solve_at
-                    ? new Date(r.last_solve_at).toLocaleString('ru-RU')
-                    : '—'}
+                  {r.last_solve_at ? new Date(r.last_solve_at).toLocaleString('ru-RU') : '—'}
                 </td>
               </tr>
             ))}
@@ -675,14 +652,11 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
         <div className="me-section">
           <h3>Команда</h3>
           {myTeam ? (
-            <TeamSummaryBlock comp={comp} team={myTeam} onReload={onReload} />
+            <TeamSummaryBlock comp={comp} team={myTeam} />
           ) : (
             <div>
               <p>У вас нет команды в этом соревновании.</p>
-              <Link
-                to={`/competitions/${comp.slug}/team`}
-                className="btn btn-primary"
-              >
+              <Link to={`/competitions/${comp.slug}/team`} className="btn btn-primary">
                 Создать / присоединиться
               </Link>
             </div>
@@ -764,12 +738,11 @@ function MyApplicationTab({ comp, myApp, myTeam, invitations, onReload, push }) 
   )
 }
 
-function TeamSummaryBlock({ comp, team, onReload }) {
+function TeamSummaryBlock({ comp, team }) {
   return (
     <div>
       <p>
-        <strong>{team.name}</strong> · статус: {team.status} · состав:{' '}
-        {team.member_count}
+        <strong>{team.name}</strong> · статус: {team.status} · состав: {team.member_count}
       </p>
       {team.members?.length > 0 && (
         <ul className="team-members-list">

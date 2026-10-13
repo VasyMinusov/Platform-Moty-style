@@ -19,7 +19,10 @@ function formatDateRange(start, end) {
   if (!start && !end) return '—'
   const fmt = (iso) =>
     new Date(iso).toLocaleString('ru-RU', {
-      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     })
   if (start && end) return `${fmt(start)} → ${fmt(end)}`
   return start ? `с ${fmt(start)}` : `до ${fmt(end)}`
@@ -65,7 +68,9 @@ export default function CompetitionsListPage() {
   const [error, setError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -102,7 +107,9 @@ export default function CompetitionsListPage() {
           <h1>Соревнования</h1>
         </div>
         {isAuthenticated && (
-          <Link to="/challenges" className="btn">К заданиям</Link>
+          <Link to="/challenges" className="btn">
+            К заданиям
+          </Link>
         )}
       </div>
 
@@ -128,7 +135,9 @@ export default function CompetitionsListPage() {
       {error && <div className="alert">{error}</div>}
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : visible.length === 0 ? (
         <div className="empty-state">
           <p>Соревнований по выбранному фильтру нет.</p>
@@ -150,9 +159,7 @@ export default function CompetitionsListPage() {
                 }}
               >
                 <header className="comp-card-head">
-                  <span className={`comp-status comp-status-${c.status}`}>
-                    {statusLabel}
-                  </span>
+                  <span className={`comp-status comp-status-${c.status}`}>{statusLabel}</span>
                   <span className="comp-mode mono">
                     {c.mode === 'individual' && 'индивид.'}
                     {c.mode === 'team' && 'команды'}
@@ -163,13 +170,9 @@ export default function CompetitionsListPage() {
                 <h3 className="comp-title">{c.title}</h3>
                 <p className="comp-summary">{c.summary || 'Без описания'}</p>
 
-                <div className="comp-dates mono">
-                  {formatDateRange(c.starts_at, c.ends_at)}
-                </div>
+                <div className="comp-dates mono">{formatDateRange(c.starts_at, c.ends_at)}</div>
 
-                {countdown && (
-                  <div className="comp-countdown mono">{countdown}</div>
-                )}
+                {countdown && <div className="comp-countdown mono">{countdown}</div>}
 
                 {(c.min_team_size || c.max_team_size) && (
                   <div className="comp-team-size mono">

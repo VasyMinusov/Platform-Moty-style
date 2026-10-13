@@ -5,26 +5,30 @@ import './WriteupsPage.css'
 const EMPTY_WRITEUP = {
   challenge_slug: '',
   title: '',
-  content_json: JSON.stringify({
-    description: 'Описание уязвимости и цели задания',
-    steps: [
-      {
-        step: 1,
-        title: 'Разведка',
-        detail: 'Опишите, что нужно заметить в приложении',
-        command: 'curl http://target/',
-        screenshot: ''
-      },
-      {
-        step: 2,
-        title: 'Эксплуатация',
-        detail: 'Опишите шаги эксплуатации',
-        command: '',
-        screenshot: ''
-      }
-    ],
-    flag: 'flag{...}'
-  }, null, 2)
+  content_json: JSON.stringify(
+    {
+      description: 'Описание уязвимости и цели задания',
+      steps: [
+        {
+          step: 1,
+          title: 'Разведка',
+          detail: 'Опишите, что нужно заметить в приложении',
+          command: 'curl http://target/',
+          screenshot: '',
+        },
+        {
+          step: 2,
+          title: 'Эксплуатация',
+          detail: 'Опишите шаги эксплуатации',
+          command: '',
+          screenshot: '',
+        },
+      ],
+      flag: 'flag{...}',
+    },
+    null,
+    2
+  ),
 }
 
 export default function WriteupsPage() {
@@ -43,10 +47,7 @@ export default function WriteupsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [wData, cData] = await Promise.all([
-        api.listWriteups(),
-        api.listChallenges()
-      ])
+      const [wData, cData] = await Promise.all([api.listWriteups(), api.listChallenges()])
       setWriteups(wData)
       setChallenges(cData)
     } catch (err) {
@@ -68,9 +69,10 @@ export default function WriteupsPage() {
     setEditing({
       challenge_slug: w.challenge_slug,
       title: w.title,
-      content_json: typeof w.content_json === 'string'
-        ? w.content_json
-        : JSON.stringify(w.content_json, null, 2)
+      content_json:
+        typeof w.content_json === 'string'
+          ? w.content_json
+          : JSON.stringify(w.content_json, null, 2),
     })
   }
 
@@ -80,17 +82,17 @@ export default function WriteupsPage() {
     try {
       JSON.parse(editing.content_json)
 
-      const existing = writeups.find(w => w.challenge_slug === editing.challenge_slug)
+      const existing = writeups.find((w) => w.challenge_slug === editing.challenge_slug)
       if (existing) {
         await api.updateWriteup(editing.challenge_slug, {
           title: editing.title,
-          content_json: editing.content_json
+          content_json: editing.content_json,
         })
       } else {
         await api.createWriteup({
           challenge_slug: editing.challenge_slug,
           title: editing.title,
-          content_json: editing.content_json
+          content_json: editing.content_json,
         })
       }
       setEditing(null)
@@ -117,15 +119,19 @@ export default function WriteupsPage() {
   }
 
   const availableSlugs = challenges
-    .filter(c => !writeups.some(w => w.challenge_slug === c.slug))
-    .map(c => c.slug)
+    .filter((c) => !writeups.some((w) => w.challenge_slug === c.slug))
+    .map((c) => c.slug)
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
 
   if (editing) {
-    const isExisting = writeups.some(w => w.challenge_slug === editing.challenge_slug)
+    const isExisting = writeups.some((w) => w.challenge_slug === editing.challenge_slug)
     return (
       <div>
         <div className="page-head">
@@ -148,8 +154,10 @@ export default function WriteupsPage() {
                 onChange={(e) => setEditing({ ...editing, challenge_slug: e.target.value })}
               >
                 <option value="">— выберите задание —</option>
-                {availableSlugs.map(s => (
-                  <option key={s} value={s}>{s}</option>
+                {availableSlugs.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </select>
             )}
@@ -183,7 +191,11 @@ export default function WriteupsPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving || !editing.challenge_slug}>
+            <button
+              className="btn btn-primary"
+              onClick={handleSave}
+              disabled={saving || !editing.challenge_slug}
+            >
               {saving ? 'Сохранение…' : 'Сохранить'}
             </button>
             <button className="btn" onClick={() => setEditing(null)} disabled={saving}>
@@ -226,7 +238,9 @@ export default function WriteupsPage() {
                 обновлено: {new Date(w.updated_at).toLocaleString('ru-RU')}
               </span>
               <div className="actions">
-                <button className="btn" onClick={() => startEdit(w)}>Редактировать</button>
+                <button className="btn" onClick={() => startEdit(w)}>
+                  Редактировать
+                </button>
                 <button className="btn btn-danger" onClick={() => handleDelete(w.challenge_slug)}>
                   Удалить
                 </button>
@@ -238,4 +252,3 @@ export default function WriteupsPage() {
     </div>
   )
 }
-

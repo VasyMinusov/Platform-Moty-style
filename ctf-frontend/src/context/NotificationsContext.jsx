@@ -1,6 +1,4 @@
-import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
-} from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useAuth } from './AuthContext'
 
@@ -27,9 +25,6 @@ export function NotificationsProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [toasts, setToasts] = useState([])
 
-  const wsRef = useRef(null)
-  const reconnectTimerRef = useRef(null)
-  const closedManuallyRef = useRef(false)
   const timersRef = useRef(new Map())
 
   // ── Toasts ────────────────────────────────────────────────────────
@@ -43,19 +38,22 @@ export function NotificationsProvider({ children }) {
     }
   }, [])
 
-  const showToast = useCallback((payload) => {
-    const id = payload.id || nextId()
-    const toast = {
-      id,
-      level: payload.level || 'info',
-      title: payload.title || 'Уведомление',
-      message: payload.message || '',
-      link: payload.link || null,
-    }
-    setToasts((t) => [...t, toast])
-    const timer = setTimeout(() => dismissToast(id), TOAST_DURATION_MS)
-    timersRef.current.set(id, timer)
-  }, [dismissToast])
+  const showToast = useCallback(
+    (payload) => {
+      const id = payload.id || nextId()
+      const toast = {
+        id,
+        level: payload.level || 'info',
+        title: payload.title || 'Уведомление',
+        message: payload.message || '',
+        link: payload.link || null,
+      }
+      setToasts((t) => [...t, toast])
+      const timer = setTimeout(() => dismissToast(id), TOAST_DURATION_MS)
+      timersRef.current.set(id, timer)
+    },
+    [dismissToast]
+  )
 
   useEffect(() => {
     const timers = timersRef.current
@@ -87,17 +85,34 @@ export function NotificationsProvider({ children }) {
   }, [reload])
 
   // ── WebSocket ────────────────────────────────────────────────────
+  //
+  // ВАЖНО: всё состояние соединения (ws, таймеры, флаг «отменено») живёт
+  // в локальных переменных ЗАМЫКАНИЯ этого вызова useEffect, а не в refs.
+  // В React 19 StrictMode эффекты вызываются дважды подряд
+  // (mount → cleanup → mount) — если делить состояние через refs, то
+  // фантомный mount#1 перезапишет флаг, установленный cleanup'ом, и его
+  // уже закрытый ws попытается переподключиться. Firefox при этом
+  // показывает "interrupted while page was loading".
+  //
+  // Дополнительно: первое соединение открываем через setTimeout(150ms),
+  // чтобы StrictMode успел сделать пару mount/unmount, и WS создался
+  // ровно один раз.
 
   useEffect(() => {
     if (!token || !isAuthenticated) return
 
-    closedManuallyRef.current = false
+    let cancelled = false
+    let ws = null
+    let reconnectTimer = null
+    let initialTimer = null
 
     function connect() {
-      const ws = new WebSocket(buildNotificationsWsUrl(token))
-      wsRef.current = ws
+      if (cancelled) return
+
+      ws = new WebSocket(buildNotificationsWsUrl(token))
 
       ws.onmessage = (evt) => {
+        if (cancelled) return
         try {
           const payload = JSON.parse(evt.data)
           if (payload.type === 'notifications.hello') {
@@ -127,83 +142,125 @@ export function NotificationsProvider({ children }) {
       }
 
       ws.onclose = () => {
-        if (closedManuallyRef.current) return
-        reconnectTimerRef.current = setTimeout(connect, 3000)
+        if (cancelled) return
+        reconnectTimer = setTimeout(connect, 3000)
       }
 
       ws.onerror = () => {
-        try { ws.close() } catch { /* ignore */ }
+        try {
+          ws.close()
+        } catch {
+          /* ignore */
+        }
       }
     }
 
-    connect()
+    initialTimer = setTimeout(connect, 150)
 
     return () => {
-      closedManuallyRef.current = true
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
-      try { wsRef.current?.close() } catch { /* ignore */ }
+      cancelled = true
+      if (initialTimer) clearTimeout(initialTimer)
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      try {
+        ws?.close()
+      } catch {
+        /* ignore */
+      }
     }
   }, [token, isAuthenticated, showToast])
 
   // ── Публичный API ────────────────────────────────────────────────
 
-  const push = useCallback((payload) => {
-    // Локальный push — на случай, если хотим уведомить без бэка.
-    const id = payload.id || nextId()
-    const item = {
-      id,
-      type: payload.type || 'generic',
-      title: payload.title || 'Уведомление',
-      message: payload.message || '',
-      level: payload.level || 'info',
-      link: payload.link || null,
-      payload_json: payload.meta || {},
-      read: false,
-      created_at: new Date().toISOString(),
-    }
-    setItems((prev) => [item, ...prev].slice(0, 100))
-    setUnreadCount((c) => c + 1)
-    if (!payload.silent) showToast(item)
-    return id
-  }, [showToast])
+  const push = useCallback(
+    (payload) => {
+      // Локальный push — на случай, если хотим уведомить без бэка.
+      const id = payload.id || nextId()
+      const item = {
+        id,
+        type: payload.type || 'generic',
+        title: payload.title || 'Уведомление',
+        message: payload.message || '',
+        level: payload.level || 'info',
+        link: payload.link || null,
+        payload_json: payload.meta || {},
+        read: false,
+        created_at: new Date().toISOString(),
+      }
+      setItems((prev) => [item, ...prev].slice(0, 100))
+      setUnreadCount((c) => c + 1)
+      if (!payload.silent) showToast(item)
+      return id
+    },
+    [showToast]
+  )
 
   const markRead = useCallback(async (id) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
     setUnreadCount((c) => Math.max(0, c - 1))
-    try { await api.markNotificationRead(id) } catch { /* ignore */ }
+    try {
+      await api.markNotificationRead(id)
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const markAllRead = useCallback(async () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
     setUnreadCount(0)
-    try { await api.markAllNotificationsRead() } catch { /* ignore */ }
+    try {
+      await api.markAllNotificationsRead()
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const remove = useCallback(async (id) => {
     setItems((prev) => prev.filter((n) => n.id !== id))
-    try { await api.deleteNotification(id) } catch { /* ignore */ }
+    try {
+      await api.deleteNotification(id)
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const clearAll = useCallback(async () => {
     setItems([])
     setUnreadCount(0)
-    try { await api.clearNotifications() } catch { /* ignore */ }
+    try {
+      await api.clearNotifications()
+    } catch {
+      /* ignore */
+    }
   }, [])
 
   const value = useMemo(
     () => ({
-      items, toasts, unreadCount,
-      push, markRead, markAllRead, remove, clearAll,
-      dismissToast, reload,
+      items,
+      toasts,
+      unreadCount,
+      push,
+      markRead,
+      markAllRead,
+      remove,
+      clearAll,
+      dismissToast,
+      reload,
     }),
-    [items, toasts, unreadCount, push, markRead, markAllRead, remove, clearAll, dismissToast, reload],
+    [
+      items,
+      toasts,
+      unreadCount,
+      push,
+      markRead,
+      markAllRead,
+      remove,
+      clearAll,
+      dismissToast,
+      reload,
+    ]
   )
 
-  return (
-    <NotificationsContext.Provider value={value}>
-      {children}
-    </NotificationsContext.Provider>
-  )
+  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>
 }
 
 export function useNotifications() {

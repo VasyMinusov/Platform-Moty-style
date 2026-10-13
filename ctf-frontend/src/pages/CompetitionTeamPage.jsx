@@ -20,10 +20,13 @@ export default function CompetitionTeamPage() {
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => { load() }, [slug])
+  useEffect(() => {
+    load()
+  }, [slug])
 
   async function load() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     try {
       const c = await api.getCompetition(slug)
       setComp(c)
@@ -41,7 +44,8 @@ export default function CompetitionTeamPage() {
   }
 
   async function run(fn, onSuccess) {
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await fn()
       await load()
@@ -53,7 +57,12 @@ export default function CompetitionTeamPage() {
     }
   }
 
-  if (loading) return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  if (loading)
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   if (error && !comp) return <div className="alert">{error}</div>
 
   return (
@@ -63,7 +72,9 @@ export default function CompetitionTeamPage() {
           <span className="eyebrow mono">{slug}</span>
           <h1>Команда</h1>
         </div>
-        <Link to={`/competitions/${slug}`} className="btn">← К соревнованию</Link>
+        <Link to={`/competitions/${slug}`} className="btn">
+          ← К соревнованию
+        </Link>
       </div>
 
       {error && <div className="alert">{error}</div>}
@@ -88,19 +99,21 @@ export default function CompetitionTeamPage() {
             <button
               className="btn btn-primary"
               disabled={busy || newTeamName.trim().length < 2}
-              onClick={() => run(
-                () => api.createTeam(slug, newTeamName.trim()),
-                () => {
-                  push({
-                    type: 'team.created',
-                    title: 'Команда создана',
-                    message: newTeamName.trim(),
-                    level: 'success',
-                    link: `/competitions/${slug}/team`,
-                  })
-                  setNewTeamName('')
-                },
-              )}
+              onClick={() =>
+                run(
+                  () => api.createTeam(slug, newTeamName.trim()),
+                  () => {
+                    push({
+                      type: 'team.created',
+                      title: 'Команда создана',
+                      message: newTeamName.trim(),
+                      level: 'success',
+                      link: `/competitions/${slug}/team`,
+                    })
+                    setNewTeamName('')
+                  }
+                )
+              }
             >
               Создать
             </button>
@@ -120,18 +133,20 @@ export default function CompetitionTeamPage() {
             <button
               className="btn"
               disabled={busy || !joinCode.trim()}
-              onClick={() => run(
-                () => api.joinByCode(slug, joinCode.trim()),
-                () => {
-                  push({
-                    type: 'team.joined',
-                    title: 'Вы присоединились к команде',
-                    level: 'success',
-                    link: `/competitions/${slug}/team`,
-                  })
-                  setJoinCode('')
-                },
-              )}
+              onClick={() =>
+                run(
+                  () => api.joinByCode(slug, joinCode.trim()),
+                  () => {
+                    push({
+                      type: 'team.joined',
+                      title: 'Вы присоединились к команде',
+                      level: 'success',
+                      link: `/competitions/${slug}/team`,
+                    })
+                    setJoinCode('')
+                  }
+                )
+              }
             >
               Присоединиться
             </button>
@@ -167,15 +182,18 @@ export default function CompetitionTeamPage() {
                   <button
                     className="btn btn-danger"
                     disabled={busy}
-                    onClick={() => run(
-                      () => api.kickMember(slug, team.id, m.user_id),
-                      () => push({
-                        type: 'team.member.kicked',
-                        title: 'Участник исключён',
-                        message: m.username,
-                        level: 'warning',
-                      }),
-                    )}
+                    onClick={() =>
+                      run(
+                        () => api.kickMember(slug, team.id, m.user_id),
+                        () =>
+                          push({
+                            type: 'team.member.kicked',
+                            title: 'Участник исключён',
+                            message: m.username,
+                            level: 'warning',
+                          })
+                      )
+                    }
                   >
                     Кикнуть
                   </button>
@@ -196,18 +214,20 @@ export default function CompetitionTeamPage() {
                 <button
                   className="btn"
                   disabled={busy || !inviteUsername.trim()}
-                  onClick={() => run(
-                    () => api.inviteToTeam(slug, team.id, inviteUsername.trim()),
-                    () => {
-                      push({
-                        type: 'team.invite',
-                        title: 'Приглашение отправлено',
-                        message: inviteUsername.trim(),
-                        level: 'info',
-                      })
-                      setInviteUsername('')
-                    },
-                  )}
+                  onClick={() =>
+                    run(
+                      () => api.inviteToTeam(slug, team.id, inviteUsername.trim()),
+                      () => {
+                        push({
+                          type: 'team.invite',
+                          title: 'Приглашение отправлено',
+                          message: inviteUsername.trim(),
+                          level: 'info',
+                        })
+                        setInviteUsername('')
+                      }
+                    )
+                  }
                 >
                   Пригласить
                 </button>
@@ -231,7 +251,7 @@ export default function CompetitionTeamPage() {
                         level: 'warning',
                       })
                       navigate(`/competitions/${slug}`)
-                    },
+                    }
                   )
                 }
               }}
@@ -248,35 +268,43 @@ export default function CompetitionTeamPage() {
           <ul className="team-members">
             {invitations.map((t) => (
               <li key={t.id} className="team-member">
-                <span>{t.name} (капитан: {t.captain_username})</span>
+                <span>
+                  {t.name} (капитан: {t.captain_username})
+                </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     className="btn btn-primary"
                     disabled={busy}
-                    onClick={() => run(
-                      () => api.acceptInvite(slug, t.id),
-                      () => push({
-                        type: 'team.invite.accepted',
-                        title: 'Вы приняли приглашение',
-                        message: t.name,
-                        level: 'success',
-                      }),
-                    )}
+                    onClick={() =>
+                      run(
+                        () => api.acceptInvite(slug, t.id),
+                        () =>
+                          push({
+                            type: 'team.invite.accepted',
+                            title: 'Вы приняли приглашение',
+                            message: t.name,
+                            level: 'success',
+                          })
+                      )
+                    }
                   >
                     Принять
                   </button>
                   <button
                     className="btn"
                     disabled={busy}
-                    onClick={() => run(
-                      () => api.declineInvite(slug, t.id),
-                      () => push({
-                        type: 'team.invite.declined',
-                        title: 'Приглашение отклонено',
-                        message: t.name,
-                        level: 'info',
-                      }),
-                    )}
+                    onClick={() =>
+                      run(
+                        () => api.declineInvite(slug, t.id),
+                        () =>
+                          push({
+                            type: 'team.invite.declined',
+                            title: 'Приглашение отклонено',
+                            message: t.name,
+                            level: 'info',
+                          })
+                      )
+                    }
                   >
                     Отклонить
                   </button>

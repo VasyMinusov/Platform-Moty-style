@@ -33,9 +33,7 @@ function ActionCard({ eyebrow, title, description, actionLabel, busyLabel, onRun
       <p>{description}</p>
 
       {error && <div className="alert">{error}</div>}
-      {result && (
-        <div className="alert alert-success mono">{JSON.stringify(result)}</div>
-      )}
+      {result && <div className="alert alert-success mono">{JSON.stringify(result)}</div>}
 
       <button className="btn btn-primary" onClick={run} disabled={busy}>
         {busy ? busyLabel : actionLabel}
@@ -79,7 +77,10 @@ export default function AdminPage() {
         <div className="admin-card">
           <span className="eyebrow">персонал</span>
           <h3>Пользователи</h3>
-          <p>Статусы участников (отображаются как #статус), блокировка и разблокировка аккаунтов, назначение ролей student / moderator / admin.</p>
+          <p>
+            Статусы участников (отображаются как #статус), блокировка и разблокировка аккаунтов,
+            назначение ролей student / moderator / admin.
+          </p>
           <Link to="/users" className="btn btn-primary">
             Управление пользователями
           </Link>
@@ -87,7 +88,10 @@ export default function AdminPage() {
         <div className="admin-card">
           <span className="eyebrow">база знаний</span>
           <h3>Write-ups</h3>
-          <p>Управление решениями заданий: добавление, редактирование и удаление пошаговых write-ups в формате JSON.</p>
+          <p>
+            Управление решениями заданий: добавление, редактирование и удаление пошаговых write-ups
+            в формате JSON.
+          </p>
           <Link to="/admin/writeups" className="btn btn-primary">
             Перейти к write-ups
           </Link>
@@ -95,7 +99,10 @@ export default function AdminPage() {
         <div className="admin-card">
           <span className="eyebrow">библиотека</span>
           <h3>Занятия</h3>
-          <p>Библиотека учебных статей в Markdown: создание и редактирование занятий (доступно также модераторам).</p>
+          <p>
+            Библиотека учебных статей в Markdown: создание и редактирование занятий (доступно также
+            модераторам).
+          </p>
           <Link to="/lessons" className="btn btn-primary">
             Перейти к занятиям
           </Link>
@@ -104,4 +111,3 @@ export default function AdminPage() {
     </div>
   )
 }
-

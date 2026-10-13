@@ -14,19 +14,25 @@ export default function AdminCompetitionDashboardPage() {
   const [adjustComment, setAdjustComment] = useState('')
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => { load() }, [slug])
+  useEffect(() => {
+    load()
+  }, [slug])
 
   async function load() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     try {
       setData(await api.adminGetDashboard(slug))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function adjust() {
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       const payload = {
         delta: Number(adjustDelta) || 0,
@@ -37,14 +43,24 @@ export default function AdminCompetitionDashboardPage() {
       else throw new ApiError('Укажите user_id или team_id', 0, null)
       const r = await api.adminScoreAdjust(slug, payload)
       alert(`Очки начислены. Итого: ${r.total}`)
-      setAdjustUser(''); setAdjustTeam(''); setAdjustDelta(''); setAdjustComment('')
+      setAdjustUser('')
+      setAdjustTeam('')
+      setAdjustDelta('')
+      setAdjustComment('')
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
-  if (loading) return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+  if (loading)
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   if (error && !data) return <div className="alert">{error}</div>
   if (!data) return null
 
@@ -58,8 +74,12 @@ export default function AdminCompetitionDashboardPage() {
           <h1>Дашборд</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" onClick={load}>Обновить</button>
-          <Link to={`/admin/competitions`} className="btn">← К списку</Link>
+          <button className="btn" onClick={load}>
+            Обновить
+          </button>
+          <Link to={`/admin/competitions`} className="btn">
+            ← К списку
+          </Link>
         </div>
       </div>
 
@@ -87,7 +107,9 @@ export default function AdminCompetitionDashboardPage() {
           <span className="label">ожидают</span>
         </div>
         <div className="dash-stat">
-          <span className="value">{data.challenges.enabled || 0}/{data.challenges.total || 0}</span>
+          <span className="value">
+            {data.challenges.enabled || 0}/{data.challenges.total || 0}
+          </span>
           <span className="label">заданий активно</span>
         </div>
       </div>
@@ -95,7 +117,9 @@ export default function AdminCompetitionDashboardPage() {
       <div className="dash-panel">
         <h3>Решения по часам</h3>
         {data.solves_timeline.length === 0 ? (
-          <p className="mono" style={{ color: 'var(--text-faint)' }}>нет данных</p>
+          <p className="mono" style={{ color: 'var(--text-faint)' }}>
+            нет данных
+          </p>
         ) : (
           <div className="dash-bars">
             {data.solves_timeline.map((p, i) => (
@@ -113,14 +137,20 @@ export default function AdminCompetitionDashboardPage() {
       <div className="dash-panel">
         <h3>First bloods</h3>
         {data.first_bloods.length === 0 ? (
-          <p className="mono" style={{ color: 'var(--text-faint)' }}>пока нет</p>
+          <p className="mono" style={{ color: 'var(--text-faint)' }}>
+            пока нет
+          </p>
         ) : (
           <ul style={{ paddingLeft: 20, fontSize: 13, color: 'var(--text-dim)' }}>
             {data.first_bloods.map((fb, i) => (
               <li key={i}>
-                <span className="mono" style={{ color: 'var(--accent)' }}>{fb.challenge}</span>
-                {' — '}<strong>{fb.owner}</strong>
-                {' · '}{new Date(fb.at).toLocaleString('ru-RU')}
+                <span className="mono" style={{ color: 'var(--accent)' }}>
+                  {fb.challenge}
+                </span>
+                {' — '}
+                <strong>{fb.owner}</strong>
+                {' · '}
+                {new Date(fb.at).toLocaleString('ru-RU')}
               </li>
             ))}
           </ul>
@@ -131,7 +161,11 @@ export default function AdminCompetitionDashboardPage() {
         <h3>Топ решателей</h3>
         <table className="adm-table">
           <thead>
-            <tr><th>#</th><th>username</th><th>solves</th></tr>
+            <tr>
+              <th>#</th>
+              <th>username</th>
+              <th>solves</th>
+            </tr>
           </thead>
           <tbody>
             {data.top_solvers.map((s, i) => (
@@ -142,7 +176,11 @@ export default function AdminCompetitionDashboardPage() {
               </tr>
             ))}
             {data.top_solvers.length === 0 && (
-              <tr><td colSpan={3} className="mono" style={{ color: 'var(--text-faint)' }}>нет данных</td></tr>
+              <tr>
+                <td colSpan={3} className="mono" style={{ color: 'var(--text-faint)' }}>
+                  нет данных
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -151,7 +189,12 @@ export default function AdminCompetitionDashboardPage() {
       <div className="dash-panel">
         <h3>Активность по категориям</h3>
         <table className="adm-table">
-          <thead><tr><th>категория</th><th>решений</th></tr></thead>
+          <thead>
+            <tr>
+              <th>категория</th>
+              <th>решений</th>
+            </tr>
+          </thead>
           <tbody>
             {data.category_activity.map((c) => (
               <tr key={c.category}>
@@ -160,7 +203,11 @@ export default function AdminCompetitionDashboardPage() {
               </tr>
             ))}
             {data.category_activity.length === 0 && (
-              <tr><td colSpan={2} className="mono" style={{ color: 'var(--text-faint)' }}>нет данных</td></tr>
+              <tr>
+                <td colSpan={2} className="mono" style={{ color: 'var(--text-faint)' }}>
+                  нет данных
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

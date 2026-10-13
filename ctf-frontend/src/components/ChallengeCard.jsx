@@ -169,4 +169,3 @@ export default function ChallengeCard({ challenge, onSolved }) {
     </article>
   )
 }
-

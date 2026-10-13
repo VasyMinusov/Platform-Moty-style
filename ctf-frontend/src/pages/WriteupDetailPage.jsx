@@ -31,7 +31,11 @@ export default function WriteupDetailPage() {
   }
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
 
   if (error) {
@@ -60,7 +64,9 @@ export default function WriteupDetailPage() {
             задание: {writeup.challenge_slug}
           </p>
         </div>
-        <Link to="/writeups" className="btn">← к списку</Link>
+        <Link to="/writeups" className="btn">
+          ← к списку
+        </Link>
       </div>
 
       {content.description && (
@@ -86,9 +92,7 @@ export default function WriteupDetailPage() {
             >
               <h4>{step.title}</h4>
               <p>{step.detail}</p>
-              {step.command && (
-                <div className="step-command">{step.command}</div>
-              )}
+              {step.command && <div className="step-command">{step.command}</div>}
             </div>
           ))}
         </div>
@@ -112,4 +116,3 @@ export default function WriteupDetailPage() {
     </div>
   )
 }
-

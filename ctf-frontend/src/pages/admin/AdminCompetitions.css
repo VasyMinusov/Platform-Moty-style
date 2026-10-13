@@ -13,8 +13,8 @@
   flex-wrap: wrap;
 }
 
-.adm-toolbar input[type="search"],
-.adm-toolbar input[type="text"] {
+.adm-toolbar input[type='search'],
+.adm-toolbar input[type='text'] {
   background: var(--bg-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -139,19 +139,53 @@
   color: var(--text-dim);
 }
 
-.adm-badge.status-running { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-.adm-badge.status-paused { color: var(--text-dim); }
-.adm-badge.status-finished { color: var(--success); border-color: var(--success); }
-.adm-badge.status-cancelled { color: var(--danger); border-color: var(--danger); }
-.adm-badge.status-registration_open { color: var(--accent); border-color: var(--accent); }
-.adm-badge.status-registration_closed { color: var(--info); border-color: var(--info); }
-.adm-badge.status-announced { color: var(--info); border-color: var(--info); }
-.adm-badge.status-draft { color: var(--text-faint); }
+.adm-badge.status-running {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.adm-badge.status-paused {
+  color: var(--text-dim);
+}
+.adm-badge.status-finished {
+  color: var(--success);
+  border-color: var(--success);
+}
+.adm-badge.status-cancelled {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.adm-badge.status-registration_open {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.adm-badge.status-registration_closed {
+  color: var(--info);
+  border-color: var(--info);
+}
+.adm-badge.status-announced {
+  color: var(--info);
+  border-color: var(--info);
+}
+.adm-badge.status-draft {
+  color: var(--text-faint);
+}
 
-.adm-badge.build-ready { color: var(--success); border-color: var(--success); }
-.adm-badge.build-building { color: var(--accent); border-color: var(--accent); }
-.adm-badge.build-failed { color: var(--danger); border-color: var(--danger); }
-.adm-badge.build-pending { color: var(--text-faint); }
+.adm-badge.build-ready {
+  color: var(--success);
+  border-color: var(--success);
+}
+.adm-badge.build-building {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.adm-badge.build-failed {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.adm-badge.build-pending {
+  color: var(--text-faint);
+}
 
 /* ── Wizard ── */
 
@@ -181,7 +215,9 @@
   cursor: pointer;
 }
 
-.wiz-step-btn:hover { color: var(--text); }
+.wiz-step-btn:hover {
+  color: var(--text);
+}
 .wiz-step-btn.active {
   color: var(--accent);
   background: var(--panel-alt);
@@ -258,9 +294,18 @@
 }
 
 @media (max-width: 720px) {
-  .wiz { grid-template-columns: 1fr; }
-  .wiz-steps { position: static; flex-direction: row; flex-wrap: wrap; }
-  .wiz-row, .wiz-row-3 { grid-template-columns: 1fr; }
+  .wiz {
+    grid-template-columns: 1fr;
+  }
+  .wiz-steps {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .wiz-row,
+  .wiz-row-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .wiz-foot {
@@ -289,7 +334,9 @@
   background: var(--accent-soft);
 }
 
-.zip-drop strong { color: var(--text); }
+.zip-drop strong {
+  color: var(--text);
+}
 
 .build-log {
   background: #0b0e12;
@@ -370,7 +417,9 @@
   transition: opacity 0.15s;
 }
 
-.dash-bar:hover { opacity: 1; }
+.dash-bar:hover {
+  opacity: 1;
+}
 
 .dash-anomaly {
   border-left: 3px solid var(--danger);

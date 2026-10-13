@@ -56,11 +56,15 @@ function UserRow({ user, isAdmin, currentUserId, onChanged, onError }) {
             onChange={(e) => run(() => api.setUserRole(user.id, e.target.value))}
           >
             {Object.entries(ROLE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         ) : (
-          <span className={`role-tag mono role-${user.role}`}>{ROLE_LABELS[user.role] || user.role}</span>
+          <span className={`role-tag mono role-${user.role}`}>
+            {ROLE_LABELS[user.role] || user.role}
+          </span>
         )}
       </td>
       <td className="mono">{user.points}</td>
@@ -96,7 +100,9 @@ function UserRow({ user, isAdmin, currentUserId, onChanged, onError }) {
             )}
           </div>
         ) : (
-          <span className="dim" style={{ fontSize: 12 }}>только просмотр</span>
+          <span className="dim" style={{ fontSize: 12 }}>
+            только просмотр
+          </span>
         )}
       </td>
     </tr>
@@ -130,10 +136,12 @@ export default function UsersPage() {
   const me = users.find((u) => u.username === username)
   const q = filter.trim().toLowerCase()
   const visible = q
-    ? users.filter((u) =>
-        u.username.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.status || '').toLowerCase().includes(q))
+    ? users.filter(
+        (u) =>
+          u.username.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.status || '').toLowerCase().includes(q)
+      )
     : users
 
   return (
@@ -153,14 +161,17 @@ export default function UsersPage() {
 
       {!isAdmin && (
         <p className="admin-note">
-          Вы вошли как <code className="mono">moderator</code> — список доступен только для просмотра.
+          Вы вошли как <code className="mono">moderator</code> — список доступен только для
+          просмотра.
         </p>
       )}
 
       {error && <div className="alert">{error}</div>}
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : (
         <div className="users-table-wrap">
           <table className="users-table">

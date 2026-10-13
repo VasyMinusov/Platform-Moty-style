@@ -5,10 +5,39 @@ import { MarkdownView } from '../components/MarkdownView'
 import './Lessons.css'
 
 const CYRILLIC = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z',
-  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
-  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch',
-  ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'e',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'h',
+  ц: 'c',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
 }
 
 function slugify(text) {
@@ -63,8 +92,11 @@ export default function LessonEditorPage() {
       setForm((f) => ({ ...f, content_md: DRAFT_TEMPLATE }))
       return
     }
-    api.getLesson(slug)
-      .then((l) => setForm({ title: l.title, slug: l.slug, summary: l.summary, content_md: l.content_md }))
+    api
+      .getLesson(slug)
+      .then((l) =>
+        setForm({ title: l.title, slug: l.slug, summary: l.summary, content_md: l.content_md })
+      )
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Занятие не найдено'))
       .finally(() => setLoading(false))
   }, [slug, isNew])
@@ -90,9 +122,7 @@ export default function LessonEditorPage() {
         summary: form.summary.trim(),
         content_md: form.content_md,
       }
-      const saved = isNew
-        ? await api.createLesson(payload)
-        : await api.updateLesson(slug, payload)
+      const saved = isNew ? await api.createLesson(payload) : await api.updateLesson(slug, payload)
       navigate(`/lessons/${saved.slug}`)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ошибка сохранения')
@@ -102,7 +132,11 @@ export default function LessonEditorPage() {
   }
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
 
   return (

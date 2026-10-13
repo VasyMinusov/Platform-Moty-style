@@ -16,21 +16,28 @@ export default function LessonDetailPage() {
 
   useEffect(() => {
     setLoading(true)
-    api.getLesson(slug)
+    api
+      .getLesson(slug)
       .then(setLesson)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Занятие не найдено'))
       .finally(() => setLoading(false))
   }, [slug])
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
 
   if (error) {
     return (
       <div>
         <div className="alert">{error}</div>
-        <Link to="/lessons" className="btn">← К библиотеке</Link>
+        <Link to="/lessons" className="btn">
+          ← К библиотеке
+        </Link>
       </div>
     )
   }
@@ -43,7 +50,9 @@ export default function LessonDetailPage() {
           <h1>{lesson.title}</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn" onClick={() => navigate('/lessons')}>← К библиотеке</button>
+          <button className="btn" onClick={() => navigate('/lessons')}>
+            ← К библиотеке
+          </button>
           {canManageLessons && (
             <Link to={`/lessons/${lesson.slug}/edit`} className="btn btn-primary">
               Редактировать

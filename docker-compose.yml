@@ -55,6 +55,7 @@ services:
       # Это убирает возможность заданиям из isolated_net обращаться
       # к backend и БД.
       - platform_net
+      - isolated_net
 
   nginx:
     image: nginx:alpine

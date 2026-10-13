@@ -51,7 +51,8 @@ body {
 
 body {
   background: var(--bg);
-  background-image: radial-gradient(circle at 15% 0%, rgba(232, 163, 61, 0.05), transparent 40%),
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(232, 163, 61, 0.05), transparent 40%),
     radial-gradient(circle at 85% 20%, rgba(108, 147, 184, 0.05), transparent 45%);
   color: var(--text);
   font-family: var(--font-body);
@@ -126,7 +127,10 @@ textarea {
   background: var(--panel-alt);
   color: var(--text);
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.1s ease,
+    background 0.15s ease;
 }
 
 .btn:hover:not(:disabled) {
@@ -224,5 +228,3 @@ textarea {
   background: var(--success-soft);
   color: var(--success);
 }
-
-

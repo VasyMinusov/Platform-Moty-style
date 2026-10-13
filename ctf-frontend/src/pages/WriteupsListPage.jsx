@@ -26,7 +26,11 @@ export default function WriteupsListPage() {
   }
 
   if (loading) {
-    return <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+    return (
+      <p className="mono" style={{ color: 'var(--text-dim)' }}>
+        загрузка…
+      </p>
+    )
   }
 
   if (error) {
@@ -67,4 +71,3 @@ export default function WriteupsListPage() {
     </div>
   )
 }
-

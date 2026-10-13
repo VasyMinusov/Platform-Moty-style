@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, ApiError } from '../../api/client'
 import './AdminCompetitions.css'
@@ -23,30 +23,40 @@ export default function AdminCompetitionApplicationsPage() {
   const [decision, setDecision] = useState(null) // {appId, status}
   const [comment, setComment] = useState('')
 
-  useEffect(() => { load() }, [slug, statusFilter])
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, statusFilter])
 
   async function load() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     try {
       setItems(await api.adminListApplications(slug, statusFilter || undefined))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function submitDecision() {
     if (!decision) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.adminDecideApplication(slug, decision.appId, {
         status: decision.status,
         comment: comment || null,
       })
-      setDecision(null); setComment('')
+      setDecision(null)
+      setComment('')
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -56,28 +66,35 @@ export default function AdminCompetitionApplicationsPage() {
           <span className="eyebrow mono">{slug}</span>
           <h1>Заявки</h1>
         </div>
-        <Link to={`/admin/competitions`} className="btn">← К списку</Link>
+        <Link to={`/admin/competitions`} className="btn">
+          ← К списку
+        </Link>
       </div>
 
       <div className="adm-toolbar">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">все статусы</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+            <option key={k} value={k}>
+              {v}
+            </option>
           ))}
         </select>
-        <button className="btn" onClick={load} disabled={loading}>Обновить</button>
+        <button className="btn" onClick={load} disabled={loading}>
+          Обновить
+        </button>
       </div>
 
       {error && <div className="alert">{error}</div>}
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : items.length === 0 ? (
-        <div className="empty-state"><p>Заявок нет.</p></div>
+        <div className="empty-state">
+          <p>Заявок нет.</p>
+        </div>
       ) : (
         <div className="adm-table-wrap">
           <table className="adm-table">
@@ -96,7 +113,9 @@ export default function AdminCompetitionApplicationsPage() {
               {items.map((a) => (
                 <tr key={a.id}>
                   <td className="mono">#{a.id}</td>
-                  <td><strong>{a.username}</strong></td>
+                  <td>
+                    <strong>{a.username}</strong>
+                  </td>
                   <td className="mono">{a.team_id ?? '—'}</td>
                   <td>
                     <span className="adm-badge">{STATUS_LABEL[a.status] || a.status}</span>
@@ -112,21 +131,30 @@ export default function AdminCompetitionApplicationsPage() {
                       <button
                         className="adm-btn-mini"
                         disabled={busy || a.status === 'approved'}
-                        onClick={() => { setDecision({ appId: a.id, status: 'approved' }); setComment('') }}
+                        onClick={() => {
+                          setDecision({ appId: a.id, status: 'approved' })
+                          setComment('')
+                        }}
                       >
                         Одобрить
                       </button>
                       <button
                         className="adm-btn-mini danger"
                         disabled={busy || a.status === 'rejected'}
-                        onClick={() => { setDecision({ appId: a.id, status: 'rejected' }); setComment('') }}
+                        onClick={() => {
+                          setDecision({ appId: a.id, status: 'rejected' })
+                          setComment('')
+                        }}
                       >
                         Отклонить
                       </button>
                       <button
                         className="adm-btn-mini"
                         disabled={busy || a.status === 'waitlist'}
-                        onClick={() => { setDecision({ appId: a.id, status: 'waitlist' }); setComment('') }}
+                        onClick={() => {
+                          setDecision({ appId: a.id, status: 'waitlist' })
+                          setComment('')
+                        }}
                       >
                         В лист ожидания
                       </button>
@@ -147,14 +175,24 @@ export default function AdminCompetitionApplicationsPage() {
             {decision.status === 'waitlist' && 'Перевести в лист ожидания'}
           </h3>
           <div className="wiz-field">
-            <label>Комментарий (опционально)</label>
-            <input value={comment} onChange={(e) => setComment(e.target.value)} />
+            <label htmlFor="decision-comment">Комментарий (опционально)</label>
+            <input
+              id="decision-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button className="btn btn-primary" disabled={busy} onClick={submitDecision}>
               Подтвердить
             </button>
-            <button className="btn" onClick={() => { setDecision(null); setComment('') }}>
+            <button
+              className="btn"
+              onClick={() => {
+                setDecision(null)
+                setComment('')
+              }}
+            >
               Отмена
             </button>
           </div>

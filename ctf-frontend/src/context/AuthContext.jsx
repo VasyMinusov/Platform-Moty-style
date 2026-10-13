@@ -18,15 +18,18 @@ export function AuthProvider({ children }) {
   // При наличии токена — подтягиваем актуальные данные пользователя (роль, очки)
   useEffect(() => {
     if (!token) return
-    api.me().then((data) => {
-      setUsername(data.username)
-      setRole(data.role)
-      localStorage.setItem('ctf_username', data.username)
-      localStorage.setItem('ctf_role', data.role)
-    }).catch(() => {
-      // токен протух или невалиден — сбрасываем
-      logout()
-    })
+    api
+      .me()
+      .then((data) => {
+        setUsername(data.username)
+        setRole(data.role)
+        localStorage.setItem('ctf_username', data.username)
+        localStorage.setItem('ctf_role', data.role)
+      })
+      .catch(() => {
+        // токен протух или невалиден — сбрасываем
+        logout()
+      })
   }, [token])
 
   const login = useCallback(async (uname, password) => {
@@ -40,10 +43,13 @@ export function AuthProvider({ children }) {
     // роль подтянется useEffect'ом выше через /auth/me
   }, [])
 
-  const register = useCallback(async (uname, email, password) => {
-    await api.register({ username: uname, email, password })
-    await login(uname, password)
-  }, [login])
+  const register = useCallback(
+    async (uname, email, password) => {
+      await api.register({ username: uname, email, password })
+      await login(uname, password)
+    },
+    [login]
+  )
 
   const logout = useCallback(() => {
     localStorage.removeItem('ctf_token')
@@ -82,4 +88,3 @@ export function useAuth() {
 }
 
 export { ApiError }
-

@@ -24,9 +24,7 @@ function relativeTime(iso) {
 }
 
 export default function NotificationsBell() {
-  const {
-    items, unreadCount, markRead, markAllRead, remove, clearAll,
-  } = useNotifications()
+  const { items, unreadCount, markRead, markAllRead, remove, clearAll } = useNotifications()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
@@ -70,9 +68,7 @@ export default function NotificationsBell() {
           />
         </svg>
         {unreadCount > 0 && (
-          <span className="nbell-badge mono">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
+          <span className="nbell-badge mono">{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
       </button>
 

@@ -62,7 +62,9 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
-.team-member:last-child { border-bottom: none; }
+.team-member:last-child {
+  border-bottom: none;
+}
 
 .team-member .role-tag,
 .team-member .status-tag {

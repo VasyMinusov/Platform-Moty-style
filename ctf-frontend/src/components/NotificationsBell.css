@@ -14,7 +14,9 @@
   border-radius: var(--radius-sm);
   color: var(--text-dim);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .nbell-btn:hover {
@@ -81,8 +83,12 @@
   color: var(--accent);
 }
 
-.nbell-link.danger { color: var(--danger); }
-.nbell-link:hover { text-decoration: underline; }
+.nbell-link.danger {
+  color: var(--danger);
+}
+.nbell-link:hover {
+  text-decoration: underline;
+}
 
 .nbell-empty {
   padding: 28px 16px;
@@ -109,9 +115,15 @@
   transition: background 0.1s;
 }
 
-.nbell-item:last-child { border-bottom: none; }
-.nbell-item:hover { background: var(--panel-alt); }
-.nbell-item.read { opacity: 0.6; }
+.nbell-item:last-child {
+  border-bottom: none;
+}
+.nbell-item:hover {
+  background: var(--panel-alt);
+}
+.nbell-item.read {
+  opacity: 0.6;
+}
 
 .nbell-icon {
   font-family: var(--font-mono);
@@ -121,11 +133,20 @@
   color: var(--info);
 }
 
-.nbell-item.level-success .nbell-icon { color: var(--success); }
-.nbell-item.level-warning .nbell-icon { color: var(--accent); }
-.nbell-item.level-danger  .nbell-icon { color: var(--danger); }
+.nbell-item.level-success .nbell-icon {
+  color: var(--success);
+}
+.nbell-item.level-warning .nbell-icon {
+  color: var(--accent);
+}
+.nbell-item.level-danger .nbell-icon {
+  color: var(--danger);
+}
 
-.nbell-item-body { flex: 1; min-width: 0; }
+.nbell-item-body {
+  flex: 1;
+  min-width: 0;
+}
 
 .nbell-item-title {
   font-size: 13px;
@@ -156,7 +177,9 @@
   flex-shrink: 0;
 }
 
-.nbell-remove:hover { color: var(--danger); }
+.nbell-remove:hover {
+  color: var(--danger);
+}
 
 @media (max-width: 560px) {
   .nbell-panel {

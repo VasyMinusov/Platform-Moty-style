@@ -45,7 +45,10 @@ export default function Layout({ children }) {
       </Suspense>
       <div className="shell">
         <header className="shell-header">
-          <div className="brand" onClick={() => navigate(isAuthenticated ? '/challenges' : '/login')}>
+          <div
+            className="brand"
+            onClick={() => navigate(isAuthenticated ? '/challenges' : '/login')}
+          >
             <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
               <circle cx="32" cy="32" r="21" fill="none" stroke="var(--accent)" strokeWidth="4" />
               <path d="M32 15 L32 49 M15 32 L49 32" stroke="var(--accent)" strokeWidth="4" />
@@ -69,26 +72,28 @@ export default function Layout({ children }) {
                   {item.label}
                 </NavLink>
               ))}
-              {canViewStaff && STAFF_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}
-                >
-                  <span className="nav-tab-code mono">{item.code}</span>
-                  {item.label}
-                </NavLink>
-              ))}
-              {isAdmin && ADMIN_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}
-                >
-                  <span className="nav-tab-code mono">{item.code}</span>
-                  {item.label}
-                </NavLink>
-              ))}
+              {canViewStaff &&
+                STAFF_ITEMS.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}
+                  >
+                    <span className="nav-tab-code mono">{item.code}</span>
+                    {item.label}
+                  </NavLink>
+                ))}
+              {isAdmin &&
+                ADMIN_ITEMS.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}
+                  >
+                    <span className="nav-tab-code mono">{item.code}</span>
+                    {item.label}
+                  </NavLink>
+                ))}
             </nav>
           )}
 
@@ -98,8 +103,12 @@ export default function Layout({ children }) {
                 <NotificationsBell />
                 <span className="mono operator-tag">
                   оператор: <strong>{username}</strong>
-                  {isAdmin && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>[admin]</span>}
-                  {isModerator && <span style={{ color: 'var(--info)', marginLeft: 6 }}>[moderator]</span>}
+                  {isAdmin && (
+                    <span style={{ color: 'var(--accent)', marginLeft: 6 }}>[admin]</span>
+                  )}
+                  {isModerator && (
+                    <span style={{ color: 'var(--info)', marginLeft: 6 }}>[moderator]</span>
+                  )}
                 </span>
                 <button className="btn" onClick={handleLogout}>
                   Выйти

@@ -1,0 +1,659 @@
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+    ,-[src/pages/WriteupDetailPage.jsx:14:6]
+ 12 |   useEffect(() => {
+ 13 |     load()
+    :     ^^|^
+    :       `-- useEffect uses `load` here
+ 14 |   }, [slug])
+    :      ^^^^^^
+ 15 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! jsx-a11y(control-has-associated-label): A control must be associated with a text label.
+     ,-[src/pages/admin/AdminCompetitionApplicationsPage.jsx:129:19]
+ 128 |                   </td>
+ 129 |                   <td>
+     :                   ^^^^
+ 130 |                     <div className="actions">
+     `----
+  help: Add a text label to the control element. This can be done by adding text content, an `aria-label` attribute, or an `aria-labelledby` attribute.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+    ,-[src/pages/admin/AdminCompetitionChallengesPage.jsx:29:6]
+ 27 |   useEffect(() => {
+ 28 |     load()
+    :     ^^|^
+    :       `-- useEffect uses `load` here
+ 29 |   }, [slug])
+    :      ^^^^^^
+ 30 |   useEffect(
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! jsx-a11y(click-events-have-key-events): Enforce a clickable non-interactive element has at least one keyboard event listener.
+     ,-[src/pages/admin/AdminCompetitionChallengesPage.jsx:151:7]
+ 150 |     
+ 151 | ,->       <div
+ 152 | |           className={`zip-drop${drag ? ' drag' : ''}`}
+ 153 | |           onDragOver={(e) => {
+ 154 | |             e.preventDefault()
+ 155 | |             setDrag(true)
+ 156 | |           }}
+ 157 | |           onDragLeave={() => setDrag(false)}
+ 158 | |           onDrop={(e) => {
+ 159 | |             e.preventDefault()
+ 160 | |             setDrag(false)
+ 161 | |             const f = e.dataTransfer.files?.[0]
+ 162 | |             if (f) upload(f)
+ 163 | |           }}
+ 164 | |           onClick={() => fileRef.current?.click()}
+ 165 | `->       >
+ 166 |             <p>
+     `----
+  help: Visible, non-interactive elements with click handlers must have one of `keyup`, `keydown`, or `keypress` listener.
+
+  ! jsx-a11y(no-static-element-interactions): Static HTML elements with event handlers require a role.
+     ,-[src/pages/admin/AdminCompetitionChallengesPage.jsx:151:8]
+ 150 | 
+ 151 |       <div
+     :        ^^^
+ 152 |         className={`zip-drop${drag ? ' drag' : ''}`}
+     `----
+  help: Add a role attribute to this element, or use a semantic HTML element instead.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+    ,-[src/pages/admin/AdminCompetitionDashboardPage.jsx:19:6]
+ 17 |   useEffect(() => {
+ 18 |     load()
+    :     ^^|^
+    :       `-- useEffect uses `load` here
+ 19 |   }, [slug])
+    :      ^^^^^^
+ 20 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionDashboardPage.jsx:232:13]
+ 231 |           <div className="wiz-field">
+ 232 |             <label>user_id</label>
+     :             ^^^^^^^
+ 233 |             <input value={adjustUser} onChange={(e) => setAdjustUser(e.target.value)} />
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionDashboardPage.jsx:236:13]
+ 235 |           <div className="wiz-field">
+ 236 |             <label>team_id</label>
+     :             ^^^^^^^
+ 237 |             <input value={adjustTeam} onChange={(e) => setAdjustTeam(e.target.value)} />
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionDashboardPage.jsx:240:13]
+ 239 |           <div className="wiz-field">
+ 240 |             <label>Δ очков</label>
+     :             ^^^^^^^
+ 241 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionDashboardPage.jsx:249:11]
+ 248 |         <div className="wiz-field">
+ 249 |           <label>Комментарий</label>
+     :           ^^^^^^^
+ 250 |           <input value={adjustComment} onChange={(e) => setAdjustComment(e.target.value)} />
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(click-events-have-key-events): Enforce a clickable non-interactive element has at least one keyboard event listener.
+    ,-[src/components/Toasts.jsx:21:9]
+ 20 |           {toasts.map((t) => (
+ 21 | ,->         <div
+ 22 | |             key={t.id}
+ 23 | |             className={`toast toast-${t.level}`}
+ 24 | |             onClick={() => {
+ 25 | |               if (t.link) {
+ 26 | |                 navigate(t.link)
+ 27 | |                 dismissToast(t.id)
+ 28 | |               }
+ 29 | |             }}
+ 30 | |             role={t.link ? 'button' : undefined}
+ 31 | `->         >
+ 32 |               <span className="toast-icon" aria-hidden="true">
+    `----
+  help: Visible, non-interactive elements with click handlers must have one of `keyup`, `keydown`, or `keypress` listener.
+
+  ! jsx-a11y(no-static-element-interactions): Static HTML elements with event handlers require a role.
+    ,-[src/components/Toasts.jsx:21:10]
+ 20 |       {toasts.map((t) => (
+ 21 |         <div
+    :          ^^^
+ 22 |           key={t.id}
+    `----
+  help: Add a role attribute to this element, or use a semantic HTML element instead.
+
+  ! jsx-a11y(no-noninteractive-element-to-interactive-role): Non-interactive elements should not be assigned interactive roles.
+     ,-[src/pages/CompetitionsListPage.jsx:155:17]
+ 154 |                 onClick={() => navigate(`/competitions/${c.slug}`)}
+ 155 |                 role="button"
+     :                 ^^^^^^^^^^^^^
+ 156 |                 tabIndex={0}
+     `----
+  help: Remove the interactive role or use an appropriate interactive element instead.
+
+  ! jsx-a11y(prefer-tag-over-role): Prefer `button` over `role` attribute `button`.
+     ,-[src/pages/CompetitionsListPage.jsx:155:17]
+ 154 |                 onClick={() => navigate(`/competitions/${c.slug}`)}
+ 155 |                 role="button"
+     :                 ^^^^^^^^^^^^^
+ 156 |                 tabIndex={0}
+     `----
+  help: Replace HTML elements with `role` attribute `button` to corresponding semantic HTML tag `button`.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'logout'
+    ,-[src/context/AuthContext.jsx:16:6]
+ 13 |     if (token && isTokenExpired(token)) {
+ 14 |       logout()
+    :       ^^^|^^
+    :          `-- useEffect uses `logout` here
+ 15 |     }
+ 16 |   }, [token])
+    :      ^^^^^^^
+ 17 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'logout'
+    ,-[src/context/AuthContext.jsx:33:6]
+ 30 |         // токен протух или невалиден — сбрасываем
+ 31 |         logout()
+    :         ^^^|^^
+    :            `-- useEffect uses `logout` here
+ 32 |       })
+ 33 |   }, [token])
+    :      ^^^^^^^
+ 34 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/LessonEditorPage.jsx:164:13]
+ 163 |           <div className="field">
+ 164 |             <label>Название</label>
+     :             ^^^^^^^
+ 165 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/LessonEditorPage.jsx:172:13]
+ 171 |           <div className="field">
+ 172 |             <label>Slug (адрес страницы)</label>
+     :             ^^^^^^^
+ 173 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/LessonEditorPage.jsx:184:13]
+ 183 |           <div className="field">
+ 184 |             <label>Краткое описание</label>
+     :             ^^^^^^^
+ 185 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/LessonEditorPage.jsx:196:13]
+ 195 |           <div className="field">
+ 196 |             <label>Текст (Markdown)</label>
+     :             ^^^^^^^
+ 197 |             <textarea
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/LessonEditorPage.jsx:205:15]
+ 204 |             <div className="field">
+ 205 |               <label>Предпросмотр</label>
+     :               ^^^^^^^
+ 206 |               <MarkdownView source={form.content_md} className="lesson-preview" />
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+    ,-[src/pages/CompetitionTeamPage.jsx:25:6]
+ 23 |   useEffect(() => {
+ 24 |     load()
+    :     ^^|^
+    :       `-- useEffect uses `load` here
+ 25 |   }, [slug])
+    :      ^^^^^^
+ 26 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+    ,-[src/pages/CompetitionTeamPage.jsx:92:15]
+ 91 |             <div className="field">
+ 92 |               <label>Название</label>
+    :               ^^^^^^^
+ 93 |               <input
+    `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/CompetitionTeamPage.jsx:125:15]
+ 124 |             <div className="field">
+ 125 |               <label>Invite-код</label>
+     :               ^^^^^^^
+ 126 |               <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(click-events-have-key-events): Enforce a clickable non-interactive element has at least one keyboard event listener.
+    ,-[src/components/Layout.jsx:48:11]
+ 47 |             <header className="shell-header">
+ 48 | ,->           <div
+ 49 | |               className="brand"
+ 50 | |               onClick={() => navigate(isAuthenticated ? '/challenges' : '/login')}
+ 51 | `->           >
+ 52 |                 <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
+    `----
+  help: Visible, non-interactive elements with click handlers must have one of `keyup`, `keydown`, or `keypress` listener.
+
+  ! jsx-a11y(no-static-element-interactions): Static HTML elements with event handlers require a role.
+    ,-[src/components/Layout.jsx:48:12]
+ 47 |         <header className="shell-header">
+ 48 |           <div
+    :            ^^^
+ 49 |             className="brand"
+    `----
+  help: Add a role attribute to this element, or use a semantic HTML element instead.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/WriteupsPage.jsx:148:13]
+ 147 |           <div className="field">
+ 148 |             <label>Задание</label>
+     :             ^^^^^^^
+ 149 |             {isExisting ? (
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/WriteupsPage.jsx:167:13]
+ 166 |           <div className="field">
+ 167 |             <label>Название решения</label>
+     :             ^^^^^^^
+ 168 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/WriteupsPage.jsx:176:13]
+ 175 |           <div className="field">
+ 176 |             <label>Содержимое (JSON)</label>
+     :             ^^^^^^^
+ 177 |             <textarea
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(prefer-tag-over-role): Prefer `dialog` over `role` attribute `dialog`.
+    ,-[src/components/NotificationsBell.jsx:76:38]
+ 75 |       {open && (
+ 76 |         <div className="nbell-panel" role="dialog" aria-label="Уведомления">
+    :                                      ^^^^^^^^^^^^^
+ 77 |           <header className="nbell-head">
+    `----
+  help: Replace HTML elements with `role` attribute `dialog` to corresponding semantic HTML tag `dialog`.
+
+  ! jsx-a11y(click-events-have-key-events): Enforce a clickable non-interactive element has at least one keyboard event listener.
+     ,-[src/components/NotificationsBell.jsx:98:17]
+  97 |                   {items.map((n) => (
+  98 | ,->                 <li
+  99 | |                     key={n.id}
+ 100 | |                     className={`nbell-item level-${n.level}${n.read ? ' read' : ''}`}
+ 101 | |                     onClick={() => handleItemClick(n)}
+ 102 | `->                 >
+ 103 |                       <span className="nbell-icon" aria-hidden="true">
+     `----
+  help: Visible, non-interactive elements with click handlers must have one of `keyup`, `keydown`, or `keypress` listener.
+
+  ! jsx-a11y(no-noninteractive-element-interactions): Non-interactive elements should not be assigned mouse or keyboard event listeners.
+    ,-[src/components/NotificationsBell.jsx:98:18]
+ 97 |               {items.map((n) => (
+ 98 |                 <li
+    :                  ^^
+ 99 |                   key={n.id}
+    `----
+  help: Move the handler to an interactive element, or use an appropriate interactive role.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:350:11]
+ 349 |         <div className="wiz-field">
+ 350 |           <label>Slug</label>
+     :           ^^^^^^^
+ 351 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:360:11]
+ 359 |         <div className="wiz-field">
+ 360 |           <label>Название</label>
+     :           ^^^^^^^
+ 361 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:369:9]
+ 368 |       <div className="wiz-field">
+ 369 |         <label>Краткое описание</label>
+     :         ^^^^^^^
+ 370 |         <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:378:9]
+ 377 |       <div className="wiz-field">
+ 378 |         <label>Описание (Markdown)</label>
+     :         ^^^^^^^
+ 379 |         <textarea
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:385:9]
+ 384 |       <div className="wiz-field">
+ 385 |         <label>Правила (Markdown)</label>
+     :         ^^^^^^^
+ 386 |         <textarea value={form.rules_md} onChange={(e) => setField('rules_md', e.target.value)} />
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:398:9]
+ 397 |       <div className="wiz-field">
+ 398 |         <label>Режим</label>
+     :         ^^^^^^^
+ 399 |         <select value={form.mode} onChange={(e) => setField('mode', e.target.value)}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:409:15]
+ 408 |             <div className="wiz-field">
+ 409 |               <label>Мин. состав</label>
+     :               ^^^^^^^
+ 410 |               <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:418:15]
+ 417 |             <div className="wiz-field">
+ 418 |               <label>Макс. состав</label>
+     :               ^^^^^^^
+ 419 |               <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:427:15]
+ 426 |             <div className="wiz-field">
+ 427 |               <label>Макс. команд</label>
+     :               ^^^^^^^
+ 428 |               <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:449:9]
+ 448 |       <div className="wiz-field">
+ 449 |         <label>Макс. участников (0 = без ограничения)</label>
+     :         ^^^^^^^
+ 450 |         <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:467:11]
+ 466 |         <div className="wiz-field">
+ 467 |           <label>Регистрация открыта</label>
+     :           ^^^^^^^
+ 468 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:475:11]
+ 474 |         <div className="wiz-field">
+ 475 |           <label>Регистрация закрыта</label>
+     :           ^^^^^^^
+ 476 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:485:11]
+ 484 |         <div className="wiz-field">
+ 485 |           <label>Старт</label>
+     :           ^^^^^^^
+ 486 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:493:11]
+ 492 |         <div className="wiz-field">
+ 493 |           <label>Финиш</label>
+     :           ^^^^^^^
+ 494 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:533:11]
+ 532 |         <div className="wiz-field">
+ 533 |           <label>Видимость соревнования</label>
+     :           ^^^^^^^
+ 534 |           <select value={form.visibility} onChange={(e) => setField('visibility', e.target.value)}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:541:11]
+ 540 |         <div className="wiz-field">
+ 541 |           <label>Видимость лидерборда</label>
+     :           ^^^^^^^
+ 542 |           <select
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:553:9]
+ 552 |       <div className="wiz-field">
+ 553 |         <label>Tie-breaker</label>
+     :         ^^^^^^^
+ 554 |         <select value={form.tie_breaker} onChange={(e) => setField('tie_breaker', e.target.value)}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:573:9]
+ 572 |       <div className="wiz-field">
+ 573 |         <label>Режим</label>
+     :         ^^^^^^^
+ 574 |         <select value={s.mode} onChange={(e) => update({ mode: e.target.value })}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:582:9]
+ 581 |       <div className="wiz-field">
+ 582 |         <label>Дефолтные очки за задание</label>
+     :         ^^^^^^^
+ 583 |         <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:594:13]
+ 593 |           <div className="wiz-field">
+ 594 |             <label>Тип decay</label>
+     :             ^^^^^^^
+ 595 |             <select
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:612:13]
+ 611 |           <div className="wiz-field">
+ 612 |             <label>Макс. очков</label>
+     :             ^^^^^^^
+ 613 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:628:13]
+ 627 |           <div className="wiz-field">
+ 628 |             <label>Мин. очков</label>
+     :             ^^^^^^^
+ 629 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:649:13]
+ 648 |           <div className="wiz-field">
+ 649 |             <label>Шаг снижения</label>
+     :             ^^^^^^^
+ 650 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:665:13]
+ 664 |           <div className="wiz-field">
+ 665 |             <label>Интервал (кол-во решений)</label>
+     :             ^^^^^^^
+ 666 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:681:13]
+ 680 |           <div className="wiz-field">
+ 681 |             <label>Когда считать</label>
+     :             ^^^^^^^
+ 682 |             <select value="on_solve" disabled title="Динамический пересчёт — в следующей версии">
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:691:11]
+ 690 |         <div className="wiz-field">
+ 691 |           <label>Места</label>
+     :           ^^^^^^^
+ 692 |           <div className="mono" style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:702:9]
+ 701 |       <div className="wiz-field">
+ 702 |         <label>Штраф за подсказки</label>
+     :         ^^^^^^^
+ 703 |         <label
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:730:11]
+ 729 |         <div className="wiz-field">
+ 730 |           <label>TTL инстанса (секунд)</label>
+     :           ^^^^^^^
+ 731 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:739:11]
+ 738 |         <div className="wiz-field">
+ 739 |           <label>Макс. инстансов на пользователя</label>
+     :           ^^^^^^^
+ 740 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:750:11]
+ 749 |         <div className="wiz-field">
+ 750 |           <label>Макс. инстансов на команду</label>
+     :           ^^^^^^^
+ 751 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:759:11]
+ 758 |         <div className="wiz-field">
+ 759 |           <label>Макс. инстансов на соревнование</label>
+     :           ^^^^^^^
+ 760 |           <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:864:13]
+ 863 |           <div className="wiz-field">
+ 864 |             <label>user_id</label>
+     :             ^^^^^^^
+ 865 |             <input
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! jsx-a11y(label-has-associated-control): A form label must be associated with a control.
+     ,-[src/pages/admin/AdminCompetitionEditorPage.jsx:873:13]
+ 872 |           <div className="wiz-field">
+ 873 |             <label>Роль</label>
+     :             ^^^^^^^
+ 874 |             <select value={modRole} onChange={(e) => setModRole(e.target.value)}>
+     `----
+  help: Either give the label a `htmlFor` attribute with the id of the associated control, or wrap the label around the control.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+    ,-[src/pages/CompetitionDetailPage.jsx:53:6]
+ 51 |   useEffect(() => {
+ 52 |     load()
+    :     ^^|^
+    :       `-- useEffect uses `load` here
+ 53 |   }, [slug])
+    :      ^^^^^^
+ 54 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load'
+     ,-[src/pages/CompetitionDetailPage.jsx:252:6]
+ 250 |   useEffect(() => {
+ 251 |     load()
+     :     ^^|^
+     :       `-- useEffect uses `load` here
+ 252 |   }, [slug])
+     :      ^^^^^^
+ 253 | 
+     `----
+  help: Either include it or remove the dependency array.
+
+Found 67 warnings and 0 errors.
+Finished in 147ms on 41 files with 131 rules using 12 threads.

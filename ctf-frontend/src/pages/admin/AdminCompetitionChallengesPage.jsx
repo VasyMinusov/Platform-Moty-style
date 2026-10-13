@@ -24,21 +24,32 @@ export default function AdminCompetitionChallengesPage() {
   const fileRef = useRef(null)
   const pollRef = useRef(null)
 
-  useEffect(() => { load() }, [slug])
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+  useEffect(() => {
+    load()
+  }, [slug])
+  useEffect(
+    () => () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    },
+    []
+  )
 
   async function load() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     try {
       setItems(await api.adminListChallenges(slug))
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function upload(file) {
     if (!file) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.adminUploadChallenge(slug, file)
       await load()
@@ -46,7 +57,9 @@ export default function AdminCompetitionChallengesPage() {
       startPolling()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка загрузки')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   function startPolling() {
@@ -55,35 +68,45 @@ export default function AdminCompetitionChallengesPage() {
       try {
         const data = await api.adminListChallenges(slug)
         setItems(data)
-        const stillBuilding = data.some((c) =>
-          c.kind === 'docker' && ['pending', 'building'].includes(c.build_status))
+        const stillBuilding = data.some(
+          (c) => c.kind === 'docker' && ['pending', 'building'].includes(c.build_status)
+        )
         if (!stillBuilding) {
-          clearInterval(pollRef.current); pollRef.current = null
+          clearInterval(pollRef.current)
+          pollRef.current = null
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 2500)
   }
 
   async function rebuild(chSlug) {
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.adminRebuildChallenge(slug, chSlug)
       await load()
       startPolling()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function remove(chSlug) {
     if (!confirm(`Удалить задание "${chSlug}"?`)) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       await api.adminDeleteChallenge(slug, chSlug)
       await load()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function showBuildLog(chSlug) {
@@ -99,13 +122,16 @@ export default function AdminCompetitionChallengesPage() {
 
   async function promote(chSlug) {
     if (!confirm(`Промоутнуть "${chSlug}" в глобальные задания?`)) return
-    setBusy(true); setError(null)
+    setBusy(true)
+    setError(null)
     try {
       const r = await api.adminPromoteChallenge(slug, chSlug, { enabled: true })
       alert(`Глобальное задание создано: ${r.slug} (#${r.global_challenge_id})`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Ошибка промоушена')
-    } finally { setBusy(false) }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -115,25 +141,31 @@ export default function AdminCompetitionChallengesPage() {
           <span className="eyebrow mono">{slug}</span>
           <h1>Задания</h1>
         </div>
-        <Link to={`/admin/competitions`} className="btn">← К списку</Link>
+        <Link to={`/admin/competitions`} className="btn">
+          ← К списку
+        </Link>
       </div>
 
       {error && <div className="alert">{error}</div>}
 
       <div
         className={`zip-drop${drag ? ' drag' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDrag(true)
+        }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => {
-          e.preventDefault(); setDrag(false)
+          e.preventDefault()
+          setDrag(false)
           const f = e.dataTransfer.files?.[0]
           if (f) upload(f)
         }}
         onClick={() => fileRef.current?.click()}
       >
         <p>
-          <strong>Перетащите ZIP</strong> с заданием сюда или нажмите,
-          чтобы выбрать файл. Один ZIP = один челлендж.
+          <strong>Перетащите ZIP</strong> с заданием сюда или нажмите, чтобы выбрать файл. Один ZIP
+          = один челлендж.
         </p>
         <input
           ref={fileRef}
@@ -146,13 +178,21 @@ export default function AdminCompetitionChallengesPage() {
             if (f) upload(f)
           }}
         />
-        {busy && <p className="mono" style={{ color: 'var(--accent)' }}>Загрузка…</p>}
+        {busy && (
+          <p className="mono" style={{ color: 'var(--accent)' }}>
+            Загрузка…
+          </p>
+        )}
       </div>
 
       {loading ? (
-        <p className="mono" style={{ color: 'var(--text-dim)' }}>загрузка…</p>
+        <p className="mono" style={{ color: 'var(--text-dim)' }}>
+          загрузка…
+        </p>
       ) : items.length === 0 ? (
-        <div className="empty-state"><p>Заданий нет.</p></div>
+        <div className="empty-state">
+          <p>Заданий нет.</p>
+        </div>
       ) : (
         <div className="adm-table-wrap" style={{ marginTop: 20 }}>
           <table className="adm-table">
@@ -186,10 +226,7 @@ export default function AdminCompetitionChallengesPage() {
                   </td>
                   <td>
                     <div className="actions">
-                      <button
-                        className="adm-btn-mini"
-                        onClick={() => showBuildLog(c.slug)}
-                      >
+                      <button className="adm-btn-mini" onClick={() => showBuildLog(c.slug)}>
                         Лог
                       </button>
                       {c.kind === 'docker' && (
@@ -230,7 +267,9 @@ export default function AdminCompetitionChallengesPage() {
         <div className="adm-card" style={{ marginTop: 20 }}>
           <h3>Лог сборки: {openBuildLog}</h3>
           <div className="build-log">{buildLog}</div>
-          <button className="btn" onClick={() => setOpenBuildLog(null)}>Закрыть</button>
+          <button className="btn" onClick={() => setOpenBuildLog(null)}>
+            Закрыть
+          </button>
         </div>
       )}
     </div>

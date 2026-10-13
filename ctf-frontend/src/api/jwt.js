@@ -25,5 +25,3 @@ export function isTokenExpired(token) {
   if (!payload?.exp) return true
   return Date.now() >= payload.exp * 1000
 }
-
-

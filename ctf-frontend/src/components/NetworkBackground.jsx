@@ -120,7 +120,6 @@ export default function NetworkBackground() {
 
     // Animation loop
     let time = 0
-    const dummy = new THREE.Vector3()
 
     function animate() {
       rafRef.current = requestAnimationFrame(animate)
@@ -203,5 +202,3 @@ export default function NetworkBackground() {
 
   return <div ref={containerRef} className="network-background" aria-hidden="true" />
 }
-
-
