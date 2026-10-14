@@ -15,7 +15,11 @@ from contextlib import closing
 from datetime import datetime, timedelta
 
 import docker
-from docker.errors import NotFound
+# FIX: DockerException нужен, чтобы ловить любые ошибки docker-py
+# (APIError, NotFound при отсутствии сети/образа и т.п.) и превращать
+# их в понятный RuntimeError. Раньше ловился только NotFound — из-за
+# этого старт инстанса возвращал голый 500.
+from docker.errors import DockerException, NotFound
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -259,6 +263,16 @@ def start_competition_instance(
 
     tag = _ensure_comp_image(ch_comp, comp)
 
+    # FIX: гарантируем, что Docker-сеть соревнования существует к моменту
+    # запуска. Публикация её создаёт, но если БД «переехала» или сеть
+    # удалили руками — containers.run упал бы с docker.errors.NotFound,
+    # который не ловился и выливался в голый 500.
+    try:
+        from .competition_network import ensure_network as _ensure_comp_network
+        _ensure_comp_network(comp)
+    except DockerException as e:
+        raise RuntimeError(f"Cannot ensure competition network: {e}") from e
+
     # Проверка лимитов.
     _ensure_instance_limits(db, comp, user_id=user_id, team_id=team_id)
 
@@ -283,19 +297,26 @@ def start_competition_instance(
             env["FLAG"] = dynamic_flag
             env["CTF_FLAG"] = dynamic_flag
 
-        container = _get_client().containers.run(
-            tag,
-            ports={f"{container_port}/tcp": host_port},
-            network=comp_network_name(comp.slug),
-            environment=env or None,
-            labels={
-                "ctf-user": str(user_id),
-                "ctf-competition": comp.slug,
-                "ctf-challenge": ch_comp.slug,
-                "ctf-team": str(team_id) if team_id is not None else "",
-            },
-            **_common_container_kwargs(),
-        )
+        # FIX: любые ошибки docker-py (APIError, NotFound, ошибка образа)
+        # превращаем в RuntimeError — его поймает
+        # competition_instance_service.start и отдаст клиенту 409,
+        # а не пустой 500.
+        try:
+            container = _get_client().containers.run(
+                tag,
+                ports={f"{container_port}/tcp": host_port},
+                network=comp_network_name(comp.slug),
+                environment=env or None,
+                labels={
+                    "ctf-user": str(user_id),
+                    "ctf-competition": comp.slug,
+                    "ctf-challenge": ch_comp.slug,
+                    "ctf-team": str(team_id) if team_id is not None else "",
+                },
+                **_common_container_kwargs(),
+            )
+        except DockerException as e:
+            raise RuntimeError(f"Docker failed to start container: {e}") from e
 
         ttl = comp.instance_ttl_seconds or settings.instance_ttl_seconds
         expires_at = datetime.utcnow() + timedelta(seconds=ttl)
@@ -305,40 +326,51 @@ def start_competition_instance(
             if dynamic_flag else None
         )
 
-        if existing:
-            if existing.container_id and existing.container_id != container.id:
-                try:
-                    _get_client().containers.get(existing.container_id).remove(force=True)
-                except NotFound:
-                    pass
-            existing.container_id = container.id
-            existing.host_port = host_port
-            existing.status = "running"
-            existing.started_at = datetime.utcnow()
-            existing.expires_at = expires_at
-            existing.competition_id = comp.id
-            existing.team_id = team_id
-            existing.challenge_kind = ch_comp.kind.value
-            if dynamic_hash:
-                existing.dynamic_flag_hash = dynamic_hash
-            instance = existing
-        else:
-            instance = ChallengeInstance(
-                user_id=user_id,
-                challenge_id=ch_comp.id,
-                container_id=container.id,
-                host_port=host_port,
-                status="running",
-                expires_at=expires_at,
-                competition_id=comp.id,
-                team_id=team_id,
-                challenge_kind=ch_comp.kind.value,
-                dynamic_flag_hash=dynamic_hash,
-            )
-            db.add(instance)
+        # FIX: если падение произойдёт уже после запуска контейнера
+        # (например, ошибка сохранения в БД), подчистим контейнер,
+        # чтобы не оставить висящий процесс.
+        try:
+            if existing:
+                if existing.container_id and existing.container_id != container.id:
+                    try:
+                        _get_client().containers.get(existing.container_id).remove(force=True)
+                    except NotFound:
+                        pass
+                existing.container_id = container.id
+                existing.host_port = host_port
+                existing.status = "running"
+                existing.started_at = datetime.utcnow()
+                existing.expires_at = expires_at
+                existing.competition_id = comp.id
+                existing.team_id = team_id
+                existing.challenge_kind = ch_comp.kind.value
+                if dynamic_hash:
+                    existing.dynamic_flag_hash = dynamic_hash
+                instance = existing
+            else:
+                instance = ChallengeInstance(
+                    user_id=user_id,
+                    challenge_id=ch_comp.id,
+                    container_id=container.id,
+                    host_port=host_port,
+                    status="running",
+                    expires_at=expires_at,
+                    competition_id=comp.id,
+                    team_id=team_id,
+                    challenge_kind=ch_comp.kind.value,
+                    dynamic_flag_hash=dynamic_hash,
+                )
+                db.add(instance)
 
-        db.commit()
-        db.refresh(instance)
+            db.commit()
+            db.refresh(instance)
+        except Exception:
+            try:
+                container.remove(force=True)
+            except Exception:
+                pass
+            raise
+
         return instance
 
 

@@ -31,10 +31,12 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, role: str = "student") -> str:
+    """Создаёт JWT. Роль кладём в payload, чтобы middleware (rate limit)
+    мог отличать админа от обычного пользователя без похода в БД."""
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode(
-        {"sub": subject, "exp": expire},
+        {"sub": subject, "role": role, "exp": expire},
         settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
     )

@@ -285,16 +285,32 @@ async def upload_zip(
             )
 
     # ── Файлы задания ─────────────────────────────────────────────────
+    # FIX: для kind=static файлы из public/ публичны (студент их скачивает).
+    # Для kind=docker исходники и артефакты сборки НЕ должны быть видны
+    # студенту: он должен получить их только через уязвимость внутри
+    # контейнера (сервер сам отдаёт бинарь/файл по HTTP, как в binary-201).
+    files_are_public = (manifest.kind == "static")
+
+    # FIX: parse_zip вернул абсолютные пути ВНУТРИ временной папки
+    # (.incoming/{uuid}/...), а мы уже переместили её в final_dir.
+    # Пересчитываем stored_path от нового места — иначе запись в БД
+    # указывает в никуда и скачивание отдаёт "File is missing on disk".
     for f in parsed.files:
         rel = f.filename
-        is_public = not rel.startswith(".") and rel not in ("manifest.yaml", "Dockerfile")
+        if files_are_public:
+            is_public = (
+                not rel.startswith(".")
+                and rel not in ("manifest.yaml", "Dockerfile")
+            )
+        else:
+            is_public = False
         db.add(CompetitionChallengeFile(
             challenge_id=ch.id,
             filename=rel,
             size=f.size,
             mime=f.mime,
             sha256=f.sha256,
-            stored_path=f.stored_path,
+            stored_path=str(final_dir / rel),   # ← FIX
             is_public=is_public,
         ))
 
@@ -346,9 +362,9 @@ def _parse_memory(value: str) -> int:
 def _run_build(challenge_id: int) -> None:
     """Выполняется в отдельном потоке. Открывает свою сессию БД.
 
-    Сборка идёт через hardening:
-    - network_mode='none' (если settings.build_no_network)
-    - container_limits: memory + cpuquota
+    Использует высокоуровневый docker-py API (client.images.build),
+    который сам корректно сериализует tag и параметры.
+    container_limits не передаём — в Docker Engine 24+ он удалён из API.
     """
     db = SessionLocal()
     try:
@@ -364,61 +380,56 @@ def _run_build(challenge_id: int) -> None:
         tag = image_tag(comp.slug, ch.slug)
         context_path = str(challenge_root(comp.slug, ch.slug))
 
+        # Логируем тег в repr — если что, видно невидимые символы.
         ch.build_status = BuildStatus.building
-        ch.build_log = f"$ docker build -t {tag} {context_path}\n"
+        ch.build_log = (
+            f"$ docker build -t {tag} {context_path}\n"
+            f"[debug] tag repr = {tag!r}\n"
+            f"[debug] context  = {context_path!r}\n"
+        )
         if settings.build_no_network:
             ch.build_log += "[security] network=disabled during build\n"
-        ch.build_log += (
-            f"[security] mem_limit={settings.build_mem_limit}, "
-            f"cpu_quota={settings.build_cpu_quota}\n"
-        )
+        ch.build_log += f"[security] mem_limit={settings.build_mem_limit}\n"
         db.commit()
 
         log_lines: list[str] = []
 
-        build_kwargs: dict = {
-            "path": context_path,
-            "tag": tag,
-            "rm": True,
-            "decode": True,
-            "pull": False,
-            "nocache": False,
-            "forcerm": True,
-            "container_limits": {
-                "memory": _parse_memory(settings.build_mem_limit),
-                "cpuquota": settings.build_cpu_quota,
-            },
-        }
-        if settings.build_no_network:
-            # docker-py передаёт network_mode в контейнер сборки.
-            build_kwargs["network_mode"] = "none"
-
         try:
             with _build_lock:
-                for chunk in client.api.build(**build_kwargs):
-                    if "stream" in chunk:
-                        log_lines.append(chunk["stream"])
-                    elif "error" in chunk:
-                        log_lines.append(f"[ERROR] {chunk['error']}\n")
-                        raise DockerException(chunk["error"])
+                # Высокоуровневый API.
+                # Возвращает (image, generator_of_logs).
+                _image, build_logs = client.images.build(
+                    path=context_path,
+                    tag=tag,
+                    rm=True,
+                    forcerm=True,
+                    pull=False,
+                    nocache=False,
+                    network_mode="none" if settings.build_no_network else "default",
+                )
+                for entry in build_logs:
+                    if "stream" in entry:
+                        log_lines.append(entry["stream"])
+                    elif "error" in entry:
+                        log_lines.append(f"[ERROR] {entry['error']}\n")
 
             _built_tags.add(tag)
             ch.build_status = BuildStatus.ready
             ch.build_log = ch.build_log + "".join(log_lines) + "\n[OK] build finished\n"
         except (BuildError, DockerException) as e:
             ch.build_status = BuildStatus.failed
-            ch.build_log = ch.build_log + "".join(log_lines) + f"\n[FAIL] {e}\n"
+            ch.build_log = ch.build_log + "".join(log_lines) + f"\n[FAIL] {e!r}\n"
         except Exception as e:
             ch.build_status = BuildStatus.failed
             ch.build_log = (
                 ch.build_log + "".join(log_lines)
-                + f"\n[FAIL] {e}\n{traceback.format_exc()}\n"
+                + f"\n[FAIL] {type(e).__name__}: {e!r}\n{traceback.format_exc()}\n"
             )
 
         db.commit()
     finally:
         db.close()
-
+        
 
 def start_build(
     db: Session, comp: Competition, ch: CompetitionChallenge, actor: User,

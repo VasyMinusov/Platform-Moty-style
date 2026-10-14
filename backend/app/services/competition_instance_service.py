@@ -6,6 +6,7 @@
 - задание включено и видимо
 - зависимости задания решены
 """
+import logging
 from typing import Optional
 
 from fastapi import HTTPException
@@ -26,6 +27,9 @@ from ..models_competitions import (
 )
 from . import orchestrator
 from . import competition_challenge_service as cc_service
+
+
+logger = logging.getLogger(__name__)
 
 
 def _user_team(db: Session, comp: Competition, user: User) -> Optional[CompetitionTeam]:
@@ -122,18 +126,34 @@ def start(
     if cc_service.is_solved_by(db, ch, user_id=user.id, team_id=team_id):
         raise HTTPException(409, "Challenge already solved")
 
+    # FIX: расширили перехват. Раньше ловился только RuntimeError, из-за
+    # чего любые ошибки docker-py (NotFound, APIError и т.п.) вылезали
+    # наружу как голый 500 Internal Server Error без диагностики.
+    # Теперь:
+    #   - HTTPException пробрасываем как есть (это осмысленные ответы);
+    #   - RuntimeError от оркестратора → 409 с текстом;
+    #   - всё остальное логируем и возвращаем 500 с понятным сообщением.
     try:
         return orchestrator.start_competition_instance(
             db, comp, ch, user_id=user.id, team_id=team_id,
         )
+    except HTTPException:
+        raise
     except RuntimeError as e:
         raise HTTPException(409, str(e))
+    except Exception as e:
+        logger.exception(
+            "start_competition_instance failed: comp=%s ch=%s user=%s team=%s",
+            comp.slug, ch.slug, user.id, team_id,
+        )
+        raise HTTPException(500, f"Failed to start instance: {e}")
 
 
 def stop(
     db: Session, comp: Competition, ch: CompetitionChallenge, user: User,
 ) -> None:
-    team_id = _user_team(db, comp, user).id if _user_team(db, comp, user) else None
+    team = _user_team(db, comp, user)
+    team_id = team.id if team else None
 
     q = db.query(ChallengeInstance).filter_by(
         competition_id=comp.id, challenge_id=ch.id, status="running",

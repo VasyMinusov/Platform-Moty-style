@@ -467,7 +467,11 @@ function CompetitionChallengeCard({ slug, challenge, onSolved, push }) {
             </div>
           )}
 
-          {filesArr.length > 0 && (
+          {/* FIX: файлы задания показываем ТОЛЬКО для kind=static.
+              Для kind=docker исходники (app/*, entrypoint.sh и т.п.)
+              не должны быть видны студенту — иначе он просто скачает
+              Dockerfile и прочитает флаг. */}
+          {challenge.kind === 'static' && filesArr.length > 0 && (
             <div className="challenge-files">
               <h4 className="eyebrow">Файлы</h4>
               <ul className="challenge-files-list">

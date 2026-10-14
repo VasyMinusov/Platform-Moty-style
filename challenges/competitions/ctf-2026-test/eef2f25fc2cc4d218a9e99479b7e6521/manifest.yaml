@@ -1,0 +1,23 @@
+title: "Secure Keypad"
+type: "misc"
+kind: "docker"
+category: "misc"
+difficulty: "medium"
+points: 300
+description: >
+  Шестизначный PIN. Попыток — сколько угодно. Но каждая попытка утекает
+  больше, чем кажется.
+visibility: "visible_after_start"
+metadata:
+  docker:
+    dockerfile_path: "Dockerfile"
+    healthcheck_path: "/"
+hints:
+  - text: "Обрати внимание не на текст ответа, а на то, сколько он идёт."
+    cost: 25
+  - text: "Одна правильная цифра на своём месте — и ответ приходит заметно медленнее."
+    cost: 40
+  - text: "Отгадывай по одной цифре, усредняя замеры."
+    cost: 55
+flag: "flag{t1m1ng_4tt4cks_4r3_r34l}"
+container_port: 5060

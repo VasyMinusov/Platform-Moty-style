@@ -14,7 +14,8 @@ from typing import Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-
+from jose import JWTError, jwt
+from ..config import settings
 
 # Правила: (метод, regex пути) -> (лимит, окно в секундах).
 # Метод None = любой.
@@ -79,6 +80,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._lock = Lock()
 
     async def dispatch(self, request: Request, call_next: Callable):
+        # FIX: админ/модератор ходит без ограничений.
+        if _is_privileged(request):
+            return await call_next(request)
+        
         method = request.method
         # Берём только путь без query string.
         path = request.url.path
@@ -114,3 +119,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             bucket.append(now)
 
         return await call_next(request)
+
+# FIX: админов и модераторов не лимитируем. Роль читаем из JWT
+# (без обращения к БД на каждом запросе). Старые токены без `role`
+# трактуются как обычные — они продолжат лимитироваться.
+_PRIVILEGED_ROLES = {"admin", "moderator"}
+
+
+def _is_privileged(request: Request) -> bool:
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return False
+    token = auth[7:].strip()
+    if not token:
+        return False
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except JWTError:
+        return False
+    return payload.get("role") in _PRIVILEGED_ROLES

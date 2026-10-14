@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Разрешать только базовые образы из allowlist.
     build_enforce_base_image_allowlist: bool = True
     # Сборка без сети.
-    build_no_network: bool = True
+    build_no_network: bool = False
     # Таймаут сборки в секундах.
     build_timeout_seconds: int = 900
     # Лимиты ресурсов на этап сборки.

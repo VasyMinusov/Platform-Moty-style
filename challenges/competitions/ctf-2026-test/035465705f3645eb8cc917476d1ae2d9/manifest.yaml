@@ -1,0 +1,23 @@
+title: "Ordo Tasks"
+type: "web"
+kind: "docker"
+category: "web"
+difficulty: "easy"
+points: 200
+description: >
+  Внутренний таск-трекер. Говорят, разработчики забыли убрать одно
+  поле из API.
+visibility: "visible_after_start"
+metadata:
+  docker:
+    dockerfile_path: "Dockerfile"
+    healthcheck_path: "/"
+hints:
+  - text: "Посмотри не только на то, что отдаёт API, но и на то, как это делает фронтенд."
+    cost: 20
+  - text: "Source map — это тоже часть приложения."
+    cost: 35
+  - text: "introspection может быть отключён, но схема всё ещё существует."
+    cost: 50
+flag: "flag{graphql_intr0sp3ct10n_1s_n0t_s3cur3}"
+container_port: 5010

@@ -1,0 +1,15 @@
+title: "Find the Sword Owner"
+type: "osint"
+kind: "static"
+category: "osint"
+difficulty: "medium"
+points: 200
+description: >
+  Перед вами фотография исторического меча. Найдите его известного владельца —
+  полное имя человека, которому принадлежал этот меч.
+  Флаг — flag{имя_фамилия} в нижнем регистре, через подчёркивание.
+flag: "flag{morgan_williams}"
+metadata:
+  target_type: "person"
+  starting_material: ["sword.jpg", "brief.txt"]
+  external_links: []

@@ -35,7 +35,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(401, "Invalid credentials")
     if getattr(user, "is_blocked", False):
         raise HTTPException(403, "Account is blocked")
-    token = create_access_token(subject=user.username)
+    role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+    token = create_access_token(subject=user.username, role=role_value)
     return Token(access_token=token)
 
 

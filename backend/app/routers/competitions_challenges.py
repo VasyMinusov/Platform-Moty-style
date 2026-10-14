@@ -67,19 +67,30 @@ def _serialize_challenge(
         team_id=team_id,
     )
 
-    # Публичные файлы задания. Для kind=docker тоже могут быть (source,
-    # binary и т.п.) — фронт покажет их отдельно. manifest.yaml и Dockerfile
-    # в БД помечены is_public=False и сюда не попадут.
-    from ..models_competitions import CompetitionChallengeFile
-    files = (
-        db.query(CompetitionChallengeFile)
-        .filter(
-            CompetitionChallengeFile.challenge_id == ch.id,
-            CompetitionChallengeFile.is_public.is_(True),
-        )
-        .order_by(CompetitionChallengeFile.filename)
-        .all()
+    # ── Публичные файлы задания ─────────────────────────────────────
+    # 1. Для kind=docker файлы НИКОГДА не отдаются через API. Студент
+    #    получает нужное (бинарь, исходник) только по HTTP из самого
+    #    контейнера — так задумано в задании.
+    # 2. Для kind=static отдаём только то, что реально лежит в public/:
+    #    исключаем manifest.yaml и Dockerfile даже если они случайно
+    #    оказались is_public=true.
+    from ..models_competitions import (
+        ChallengeKind, CompetitionChallengeFile,
     )
+
+    files: list[CompetitionChallengeFile] = []
+    if ch.kind == ChallengeKind.static:
+        files = (
+            db.query(CompetitionChallengeFile)
+            .filter(
+                CompetitionChallengeFile.challenge_id == ch.id,
+                CompetitionChallengeFile.is_public.is_(True),
+                CompetitionChallengeFile.filename != "manifest.yaml",
+                CompetitionChallengeFile.filename != "Dockerfile",
+            )
+            .order_by(CompetitionChallengeFile.filename)
+            .all()
+        )
 
     data = CompetitionChallengeOut.model_validate(ch)
     data.solved = solved
@@ -151,6 +162,10 @@ def download_file(
     if not ch.enabled or ch.visibility == ChallengeVisibility.hidden:
         raise HTTPException(404, "Challenge not found")
 
+    # FIX: файлы docker-заданий не скачиваются через API вообще.
+    if ch.kind == ChallengeKind.docker:
+        raise HTTPException(404, "File not found")
+
     from ..models_competitions import CompetitionChallengeFile
     f = (
         db.query(CompetitionChallengeFile)
@@ -159,13 +174,14 @@ def download_file(
     )
     if not f:
         raise HTTPException(404, "File not found")
+    if f.filename in ("manifest.yaml", "Dockerfile"):
+        raise HTTPException(404, "File not found")
 
     p = Path(f.stored_path)
     if not p.exists():
         raise HTTPException(404, "File is missing on disk")
 
     return FileResponse(p, filename=f.filename, media_type=f.mime or "application/octet-stream")
-
 
 # ══════════════════════════════════════════════════════════════════════
 # Админ / модератор
