@@ -1,0 +1,1 @@
+"""Fuzz-тесты на Hypothesis (маркер: fuzz)."""

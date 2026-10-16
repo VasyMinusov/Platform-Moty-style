@@ -1,0 +1,116 @@
+[project]
+name = "fastapi-t"
+version = "0.1.0"
+description = "Auth service with NIST SP 800-63B Rev 4 compliance"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    # ── Web framework ──────────────────────────────────────────────────────
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.4",
+    # ── Валидация и настройки ─────────────────────────────────────────────
+    "pydantic-settings>=2.15.0",
+    "email-validator>=2.3.0",
+    # ── База данных ────────────────────────────────────────────────────────
+    "sqlalchemy>=2.0.52",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.3",
+    # ── Безопасность ──────────────────────────────────────────────────────
+    #
+    # ВАЖНО: только argon2-cffi. Устаревший пакет `argon2` (0.1.10,
+    # последний релиз 2016) НЕ включён:
+    #
+    #   1. Он конфликтует с argon2-cffi — оба устанавливают модуль
+    #      `argon2/` в site-packages, второй перезаписывает первый.
+    #
+    #   2. Для Python 3.14 у него нет wheels — uv пытается собрать
+    #      C-расширение из sdist, для чего нужен gcc. В slim-образе
+    #      gcc отсутствует → сборка падает.
+    #
+    #   3. API, которое использует наш код (PasswordHasher,
+    #      exceptions.InvalidHashError / VerificationError /
+    #      VerifyMismatchError), полностью предоставлено argon2-cffi.
+    #
+    "argon2-cffi>=25.1.0",
+    "cryptography>=50.0.1",
+    "ecdsa>=0.19.2",
+    "gostcrypto>=1.2.5",
+    "python-jose[cryptography]>=3.5.0",
+    # ── Утилиты ────────────────────────────────────────────────────────────
+    "httpx>=0.28.1",
+    "orjson>=3.12.0",
+    "structlog>=26.1.0",
+    # ── MFA (TOTP) ─────────────────────────────────────────────────────────
+    "pyotp>=2.9.0",
+    # ── Redis (distributed rate limiter) ───────────────────────────────────
+    # hiredis — C-парсер протокола, ускоряет чтение ответов в 2-3x.
+    "redis[hiredis]>=5.0.0",
+    "prometheus-fastapi-instrumentator>=8.1.0",
+    "prometheus-client>=0.26.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "types-python-jose>=3.5.0",
+    # Property-based тесты (fuzz). См. tests/fuzz/, make test-fuzz.
+    "hypothesis>=6.100.0",
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Ruff
+# ═══════════════════════════════════════════════════════════════════════════
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = [
+    "N818",   # ProblemError — RFC 9457 terminology
+    "UP042",  # StrEnum конфликтует с SQLAlchemy Enum
+    "UP046",  # Generic[T] стабильнее с Pydantic v2
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Mypy
+# ═══════════════════════════════════════════════════════════════════════════
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["pydantic.mypy"]
+explicit_package_bases = true
+mypy_path = "."
+
+# Pydantic mypy plugin не поддерживает @computed_field над @property.
+[[tool.mypy.overrides]]
+module = ["app.config"]
+disable_error_code = ["prop-decorator"]
+
+# Сторонние библиотеки без stubs / py.typed.
+[[tool.mypy.overrides]]
+module = ["gostcrypto", "gostcrypto.*"]
+ignore_missing_imports = true
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pytest
+# ═══════════════════════════════════════════════════════════════════════════
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+# По умолчанию fuzz-тесты НЕ гоняем — они медленные (генерят сотни
+# примеров). Запуск отдельно:
+#   make test-fuzz           (или)
+#   uv run pytest -m fuzz -v
+addopts = "-m 'not fuzz'"
+markers = [
+    "fuzz: property-based tests with Hypothesis (slow; run with `make test-fuzz`)",
+]

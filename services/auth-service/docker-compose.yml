@@ -1,0 +1,165 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# docker-compose.yml
+#
+# Профили:
+#   (без профиля)  postgres + redis              — только инфраструктура
+#   --profile app  + app                         — инфраструктура + приложение
+#   --profile dev  + pgadmin                     — плюс веб-UI для БД
+#
+# Примеры:
+#   docker compose up -d postgres                # только БД (для локальной разработки)
+#   docker compose --profile app up -d           # всё в контейнерах
+#   docker compose --profile dev --profile app up -d   # всё + pgadmin
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: fastapi-t
+
+services:
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: fastapi-t-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-auth_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
+      # SCRAM-SHA-256 — современный стандарт (замена md5)
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      # Таймзона
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # init-скрипты: выполняются ТОЛЬКО при первом создании volume
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-auth_user} -d ${POSTGRES_DB:-auth_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Resource limits (важно для prod)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - backend
+
+  # ─── Redis ─────────────────────────────────────────────────────────────────
+  # Используется для:
+  # - Distributed rate limiter (замена in-memory LoginRateLimiter)
+  # - Кэш JWT blacklist (для мгновенного revocation access-токенов)
+  # - Session store (если откажемся от БД для refresh)
+  redis:
+    image: redis:7-alpine
+    container_name: fastapi-t-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      # Пароль (раскомментировать в prod)
+      # - --requirepass
+      # - ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - backend
+
+  # ─── Auth Service (приложение) ─────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fastapi-t-auth:latest
+    container_name: fastapi-t-app
+    restart: unless-stopped
+    profiles: ["app"]
+
+    # Ждать 35 сек до SIGKILL. Должно быть >= --timeout-graceful-shutdown
+    # в CMD Dockerfile (30) + запас на lifespan shutdown (wait_for_zero
+    # 25 сек + dispose пулов). Иначе docker пришлёт SIGKILL раньше, чем
+    # закроются соединения с Postgres/Redis, и lifespan shutdown не выполнится.
+    stop_grace_period: 35s
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Переопределяем хосты: внутри docker-сети они называются по именам сервисов
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    networks:
+      - backend
+
+  # ─── pgAdmin (только для dev) ──────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: fastapi-t-pgadmin
+    restart: unless-stopped
+    profiles: ["dev"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+# ─── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# ─── Networks ───────────────────────────────────────────────────────────────
+networks:
+  backend:
+    driver: bridge

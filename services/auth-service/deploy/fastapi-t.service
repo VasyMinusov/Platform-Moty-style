@@ -1,0 +1,129 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# systemd unit для Auth Service (FastAPI + uvicorn).
+#
+# Установка:
+#   sudo cp deploy/fastapi-t.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fastapi-t
+#
+# Управление:
+#   systemctl status fastapi-t
+#   systemctl restart fastapi-t
+#   systemctl stop fastapi-t
+#
+# Логи:
+#   journalctl -u fastapi-t -f
+#   journalctl -u fastapi-t --since "10 min ago"
+#   journalctl -u fastapi-t -p err
+#
+# ВАЖНО:
+#   - Сервис ожидает, что код лежит в /opt/fastapi-t
+#   - .env читается из /opt/fastapi-t/.env
+#   - venv — в /opt/fastapi-t/.venv (создаётся через `uv sync`)
+# ═══════════════════════════════════════════════════════════════════════════
+
+[Unit]
+Description=Auth Service (FastAPI, NIST SP 800-63B Rev 4)
+Documentation=https://github.com/VasyMinusov/fastapi-t
+After=network-online.target
+Wants=network-online.target
+
+# ── Если Postgres/Redis поднимаются через docker compose ──────────────────
+# Раскомментируй, чтобы systemd дождался Docker перед стартом приложения.
+# После=docker.service
+# Requires=docker.service
+# После=network-online.target docker.service
+
+[Service]
+Type=exec
+User=auth
+Group=auth
+WorkingDirectory=/opt/fastapi-t
+
+# ── Запуск ────────────────────────────────────────────────────────────────
+# Используем venv-интерпретатор напрямую (без uv run — быстрее старт).
+#   --no-access-log                — access-логи пишет наш structlog middleware.
+#   --proxy-headers                — доверять X-Forwarded-* за reverse proxy.
+#   --timeout-graceful-shutdown 30 — при SIGTERM перестать принимать новые
+#                                    соединения и ждать до 30 сек завершения
+#                                    активных запросов, затем вызвать lifespan
+#                                    shutdown (там — wait_for_zero + dispose).
+ExecStart=/opt/fastapi-t/.venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --proxy-headers \
+    --no-access-log \
+    --timeout-graceful-shutdown 30
+
+# ── Graceful shutdown ─────────────────────────────────────────────────────
+# SIGTERM — uvicorn ловит, перестаёт принимать соединения, ждёт активные
+# запросы до --timeout-graceful-shutdown (30 сек), затем вызывает lifespan
+# shutdown → мы делаем wait_for_zero (25 сек) + закрываем пулы БД/Redis.
+#
+# TimeoutStopSec = 35 > 30 (uvicorn) + запас на dispose. Если система
+# пришлёт SIGKILL раньше — dispose_engine() не выполнится, соединения
+# повиснут до TCP-таймаута Postgres.
+KillSignal=SIGTERM
+TimeoutStopSec=35
+
+# ── Перезапуск ────────────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=5s
+# Не пытаться перезапускать бесконечно быстро при crash-loop
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# ── Окружение ─────────────────────────────────────────────────────────────
+EnvironmentFile=/opt/fastapi-t/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# ── Hardening (systemd sandbox) ───────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+RemoveIPC=true
+UMask=0077
+
+# ВАЖНО: MemoryDenyWriteExecute должен быть false для Python 3.14 JIT.
+# JIT генерирует машинный код в W+X страницах. Если JIT не нужен — можно
+# поставить true (усиливает защиту, но JIT отключится).
+MemoryDenyWriteExecute=false
+
+# Read-write только для кэша (pytest/ruff/mypy кэши, если будут)
+ReadWritePaths=/opt/fastapi-t/.cache
+
+# ── Resource limits (cgroups v2) ──────────────────────────────────────────
+CPUQuota=200%
+CPUWeight=100
+MemoryMax=1G
+MemoryHigh=800M
+TasksMax=256
+LimitNOFILE=65536
+
+# ── Логи ──────────────────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fastapi-t
+
+[Install]
+WantedBy=multi-user.target
