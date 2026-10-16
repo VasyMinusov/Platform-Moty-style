@@ -1,9 +1,19 @@
-from datetime import datetime, timedelta
+"""
+Аутентификация и авторизация.
+
+После интеграции с auth-service:
+- JWT генерирует auth-service (HS256, тот же секрет).
+- Мы только валидируем токен (подпись, iss, aud, exp, typ=access).
+- Если локального User с id=sub нет — provision: запрашиваем профиль
+  у auth-service /api/v1/users/me и создаём локальную запись.
+
+Функции хеширования паролей (bcrypt) удалены — они больше не нужны.
+"""
 from typing import Optional
 
-import bcrypt
+import httpx
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
@@ -11,56 +21,158 @@ from .config import settings
 from .database import get_db
 from .models import User, UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-_MAX_PASSWORD_BYTES = 72
-
-
-def _normalize(password: str) -> bytes:
-    return password.encode("utf-8")[:_MAX_PASSWORD_BYTES]
+# auto_error=False: даём возможность вернуть наш формат ошибки, а не
+# дефолтный 403 от FastAPI.
+_bearer = HTTPBearer(auto_error=False)
 
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(_normalize(password), bcrypt.gensalt()).decode("utf-8")
+# ════════════════════════════════════════════════════════════════════
+# JWT validation
+# ════════════════════════════════════════════════════════════════════
 
 
-def verify_password(plain: str, hashed: str) -> bool:
+def _decode_access_token(token: str) -> dict:
+    """
+    Декодировать и валидировать access-токен от auth-service.
+
+    Проверяем:
+    - подпись (HS256, общий секрет)
+    - iss/aud (должны совпадать с auth-service)
+    - exp (leeway 30 сек для дрейфа часов)
+    - typ == "access" (refresh/mfa_pending не принимаем как access)
+    """
     try:
-        return bcrypt.checkpw(_normalize(plain), hashed.encode("utf-8"))
-    except ValueError:
-        return False
+        payload = jwt.decode(
+            token,
+            settings.auth_jwt_secret,
+            algorithms=[settings.auth_jwt_algorithm],
+            audience=settings.auth_audience,
+            issuer=settings.auth_issuer,
+            options={"leeway": 30},
+        )
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    if payload.get("typ") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not an access token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return payload
 
 
-def create_access_token(subject: str, role: str = "student") -> str:
-    """Создаёт JWT. Роль кладём в payload, чтобы middleware (rate limit)
-    мог отличать админа от обычного пользователя без похода в БД."""
-    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    return jwt.encode(
-        {"sub": subject, "role": role, "exp": expire},
-        settings.jwt_secret,
-        algorithm=settings.jwt_algorithm,
-    )
+# ════════════════════════════════════════════════════════════════════
+# Lazy provisioning
+# ════════════════════════════════════════════════════════════════════
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+def _provision_local_user(db: Session, *, user_id: int, token: str) -> Optional[User]:
+    """
+    Создать локальную запись User для аутентифицированного пользователя
+    auth-service.
+
+    Вызывается ОДИН раз за жизнь пользователя — при первом успешном
+    запросе к ctf-backend. Запрашивает профиль у auth-service и
+    копирует id/username/email. Роль по умолчанию — student.
+
+    Race condition: если два параллельных запроса увидят отсутствие
+    User, оба попробуют создать. Один упадёт с IntegrityError на
+    unique-констрейнте — вернём None (запрос получит 401, следующий
+    пройдёт уже с созданной записью).
+    """
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        username: Optional[str] = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+        r = httpx.get(
+            f"{settings.auth_service_url}/api/v1/users/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+    except httpx.HTTPError:
+        return None
 
-    user = db.query(User).filter(User.username == username).first()
+    if r.status_code != 200:
+        return None
+
+    data = r.json()
+
+    user = User(
+        id=user_id,
+        username=data["username"],
+        email=data["email"],
+        role=UserRole.student,
+        points=0,
+        status=None,
+        is_blocked=False,
+    )
+    db.add(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except Exception:
+        db.rollback()
+        return None
+
+    return user
+
+
+# ════════════════════════════════════════════════════════════════════
+# FastAPI dependencies
+# ════════════════════════════════════════════════════════════════════
+
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Извлечь и валидировать JWT, вернуть локального User.
+
+    Если пользователя ещё нет в локальной БД (первый запрос после
+    регистрации в auth-service) — provision: запрашиваем профиль
+    у auth-service и создаём запись.
+    """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+    payload = _decode_access_token(token)
+
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    user = db.query(User).filter(User.id == user_id).first()
+
     if user is None:
-        raise credentials_exception
-    if getattr(user, "is_blocked", False):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is blocked")
+        user = _provision_local_user(db, user_id=user_id, token=token)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found in local DB and provisioning failed",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    if user.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is blocked",
+        )
+
     return user
 
 
@@ -71,35 +183,33 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 
 def require_moderator(user: User = Depends(get_current_user)) -> User:
-    """Модераторы и администраторы (просмотр пользователей, ведение библиотеки)."""
+    """Модераторы и администраторы (просмотр пользователей, библиотека)."""
     if user.role not in (UserRole.admin, UserRole.moderator):
         raise HTTPException(status_code=403, detail="Moderator or admin only")
     return user
 
 
-# Псевдоним для модуля соревнований — читается лучше.
+# Псевдоним для модуля соревнований.
 require_staff = require_moderator
 
 
-# ══════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════
 # Доступ к конкретному соревнованию
-# ══════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════
+
 
 def competition_moderator_required(
     *,
     require_responsible: bool = False,
     allow_creator_prepublish: bool = True,
 ):
-    """Фабрика зависимостей: возвращает функцию, которая проверяет, что
-    текущий пользователь — админ, или назначенный на это соревнование
-    модератор (роль responsible/helper).
-
-    Дополнительно: до публикации (status=draft) создатель-модератор имеет
-    доступ к своему соревнованию, даже если он ещё не в списке
-    competition_moderators.
     """
-    # Импорт внутри функции — чтобы избежать циклического импорта на
-    # уровне модуля: security.py импортируется из многих мест.
+    Фабрика зависимостей: проверяет, что текущий пользователь — админ,
+    или назначенный на это соревнование модератор.
+
+    До публикации (status=draft) создатель-модератор имеет доступ
+    к своему соревнованию, даже если ещё не в списке moderators.
+    """
     from .models_competitions import (
         Competition,
         CompetitionModerator,

@@ -5,6 +5,14 @@ backend — этого достаточно для MVP (backend запущен �
 
 Если backend будет масштабироваться на несколько воркеров/реплик —
 заменить хранилище на Redis.
+
+ИЗМЕНЕНИЯ после интеграции с auth-service:
+- JWT-валидация в _is_privileged читает секрет из новых полей Settings:
+  auth_jwt_secret / auth_jwt_algorithm (раньше было jwt_secret /
+  jwt_algorithm — их больше нет).
+- Добавлена защита от AttributeError: если Settings по какой-то причине
+  не содержит нужных полей (например, старая версия конфига), middleware
+  НЕ падает — трактует запрос как непривилегированный.
 """
 import time
 from collections import defaultdict, deque
@@ -15,6 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from jose import JWTError, jwt
+
 from ..config import settings
 
 # Правила: (метод, regex пути) -> (лимит, окно в секундах).
@@ -80,10 +89,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._lock = Lock()
 
     async def dispatch(self, request: Request, call_next: Callable):
-        # FIX: админ/модератор ходит без ограничений.
+        # Админ/модератор ходит без ограничений.
         if _is_privileged(request):
             return await call_next(request)
-        
+
         method = request.method
         # Берём только путь без query string.
         path = request.url.path
@@ -120,9 +129,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-# FIX: админов и модераторов не лимитируем. Роль читаем из JWT
-# (без обращения к БД на каждом запросе). Старые токены без `role`
-# трактуются как обычные — они продолжат лимитироваться.
+
+# ─── Определение привилегированного пользователя ────────────────────────────
+#
+# Админов и модераторов не лимитируем. Роль читаем из JWT (без обращения
+# к БД на каждом запросе). Старые токены без `role` трактуются как
+# обычные — они продолжат лимитироваться.
+#
+# ИСТОЧНИК СЕКРЕТА: settings.auth_jwt_secret / settings.auth_jwt_algorithm.
+#
+# После интеграции с auth-service токены подписываются ЕДИНЫМ секретом,
+# общим с auth-service (поле auth_jwt_secret в Settings). Старые поля
+# jwt_secret / jwt_algorithm больше не существуют — попытка их прочитать
+# бросает AttributeError.
+#
+# Защита от AttributeError: если Settings по какой-то причине не имеет
+# нужных полей (например, старая версия конфига без AUTH_JWT_SECRET),
+# middleware НЕ падает — считает пользователя непривилегированным и
+# продолжает обычную проверку rate-limit'а. Это fail-open by design:
+# rate limiting — не security boundary, и ломать все запросы из-за
+# отсутствующей настройки хуже, чем пропустить запрос.
+#
 _PRIVILEGED_ROLES = {"admin", "moderator"}
 
 
@@ -133,12 +160,23 @@ def _is_privileged(request: Request) -> bool:
     token = auth[7:].strip()
     if not token:
         return False
+
+    try:
+        secret = settings.auth_jwt_secret
+        algorithm = settings.auth_jwt_algorithm
+    except AttributeError:
+        # Настройки не соответствуют ожидаемой схеме — не наша забота здесь,
+        # основной auth выполнится в get_current_user. Возвращаем False,
+        # чтобы не ломать запрос.
+        return False
+
     try:
         payload = jwt.decode(
             token,
-            settings.jwt_secret,
-            algorithms=[settings.jwt_algorithm],
+            secret,
+            algorithms=[algorithm],
         )
     except JWTError:
         return False
+
     return payload.get("role") in _PRIVILEGED_ROLES

@@ -1,6 +1,7 @@
 import os
 import time
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect
@@ -19,7 +20,6 @@ from .routers import (
 )
 from .services import challenge_registry
 from .models import User, UserRole
-from .security import hash_password
 
 # Импорт новых моделей — гарантирует, что Base.metadata содержит и таблицы
 # соревнований (нужно Alembic'у при autogenerate и create_all на чистой БД).
@@ -55,11 +55,13 @@ app.include_router(competitions_appeals.admin_router)
 app.include_router(competitions_ws.router)
 app.include_router(notifications.router)
 
-# ── Alembic ──────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════
+# Alembic
+# ══════════════════════════════════════════════════════════════════════
 
 def _alembic_config():
-    """Возвращает Config для Alembic или None, если alembic.ini не найден
-    (например, при запуске вообще без Alembic в окружении)."""
+    """Возвращает Config для Alembic или None, если alembic.ini не найден."""
     from alembic.config import Config
 
     backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -73,10 +75,10 @@ def _alembic_config():
 
 
 def _bootstrap_legacy_db():
-    """Если в БД уже есть таблица users, но нет alembic_version — значит
-    БД была создана старым create_all и НЕ является управляемой Alembic.
-    Стампим её первой ревизией (0001_legacy), чтобы при upgrade не
-    пересоздавались старые таблицы."""
+    """
+    Если в БД уже есть таблица users, но нет alembic_version — значит
+    БД создана старым create_all. Стампим её первой ревизией.
+    """
     insp = inspect(engine)
     tables = set(insp.get_table_names())
 
@@ -97,8 +99,7 @@ def _bootstrap_legacy_db():
 
 
 def _run_alembic_migrations():
-    """alembic upgrade head. Создаёт таблицы соревнований и все последующие
-    изменения схемы."""
+    """alembic upgrade head."""
     from alembic import command
 
     cfg = _alembic_config()
@@ -110,9 +111,7 @@ def _run_alembic_migrations():
 
 
 def _run_legacy_ddl():
-    """Исторические идемпотентные ALTER'ы для очень старых БД, которые
-    не проходили через Alembic. Новые изменения схемы сюда добавлять
-    НЕЛЬЗЯ — только через Alembic-миграции."""
+    """Исторические идемпотентные ALTER'ы для очень старых БД."""
     from sqlalchemy import text
 
     ddl = [
@@ -124,53 +123,269 @@ def _run_legacy_ddl():
             conn.execute(text(stmt))
 
 
-# ── Прочее ───────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# Bootstrap первых пользователей через auth-service
+# ══════════════════════════════════════════════════════════════════════
 
-def _ensure_admin_exists(db: Session):
-    """Создаёт дефолтного админа и модератора, если в БД ещё нет ни одного админа.
-    Учётные данные берутся из переменных окружения (ADMIN_USERNAME/ADMIN_PASSWORD,
-    MODERATOR_USERNAME/MODERATOR_PASSWORD)."""
-    admin_exists = db.query(User).filter(User.role == UserRole.admin).first()
-    if admin_exists:
+# Сколько раз пытаться зарегистрировать пользователя в auth-service,
+# если запрос падает не с 409 (email/username занят).
+#
+# Зачем retry:
+#   - На холодном старте auth-service может ещё не закончить прогрев
+#     (Argon2 init, БД-пул), и первый POST вернёт 500/503.
+#   - Если HIBP недоступен и fail_open=false — register падает. Но
+#     в нашем compose fail_open=true.
+#   - Если валидация email провалилась — retry не поможет, но лог
+#     покажет причину.
+_BOOTSTRAP_REGISTER_MAX_ATTEMPTS = 3
+_BOOTSTRAP_REGISTER_DELAY_SECONDS = 2.0
+
+
+def _wait_for_auth_service(max_attempts: int = 30, delay: float = 2.0) -> bool:
+    """
+    Ждём, пока auth-service ответит на /health/live.
+
+    Возвращает True, если дождались; False — если таймаут.
+    Логирует прогресс каждые 5 попыток (чтобы не спамить).
+    """
+    url = f"{settings.auth_service_url}/health/live"
+    for attempt in range(1, max_attempts + 1):
+        try:
+            r = httpx.get(url, timeout=3.0)
+            if r.status_code == 200:
+                print(f"[INIT] auth-service готов (попытка {attempt})")
+                return True
+        except httpx.HTTPError:
+            pass
+
+        # Логируем каждые 5 попыток, чтобы видеть прогресс, но не спамить.
+        if attempt == 1 or attempt % 5 == 0:
+            print(f"[INIT] ожидание auth-service ({attempt}/{max_attempts})…")
+        time.sleep(delay)
+
+    print(f"[INIT] auth-service не ответил за {max_attempts * delay:.0f} секунд")
+    return False
+
+
+def _register_or_login_in_auth_service(
+    username: str,
+    email: str,
+    password: str,
+) -> dict | None:
+    """
+    Регистрирует пользователя в auth-service или логинит, если уже
+    существует. Возвращает профиль (dict с id, username, email) или None.
+
+    Стратегия:
+      1. POST /api/v1/auth/register.
+         - 201 — новый пользователь, возвращаем профиль.
+         - 409 — email/username занят → идём в login.
+         - 5xx — retry (до _BOOTSTRAP_REGISTER_MAX_ATTEMPTS раз).
+         - 4xx (кроме 409) — ошибка конфигурации (например, 422 на
+           email), логируем и выходим без retry.
+      2. POST /api/v1/auth/login по email.
+         - 200 — возвращаем access_token + идём в /users/me за id.
+         - 401 — пароль не совпадает. Не пытаемся восстановиться:
+           админ должен руками разобраться, чем занят этот email.
+         - mfa_required=true — bootstrap невозможен из скрипта.
+    """
+    base = settings.auth_service_url
+
+    # ── 1. Пробуем зарегистрировать ────────────────────────────────
+    last_error: str | None = None
+
+    for attempt in range(1, _BOOTSTRAP_REGISTER_MAX_ATTEMPTS + 1):
+        try:
+            r = httpx.post(
+                f"{base}/api/v1/auth/register",
+                json={"username": username, "email": email, "password": password},
+                timeout=15.0,
+            )
+        except httpx.HTTPError as exc:
+            last_error = f"сетевая ошибка: {exc}"
+            print(
+                f"[INIT] register attempt {attempt}: {last_error}; "
+                f"retry через {_BOOTSTRAP_REGISTER_DELAY_SECONDS}s"
+            )
+            time.sleep(_BOOTSTRAP_REGISTER_DELAY_SECONDS)
+            continue
+
+        # ── Успех ─────────────────────────────────────────────────
+        if r.status_code == 201:
+            return r.json()
+
+        # ── Уже существует → login ────────────────────────────────
+        if r.status_code == 409:
+            break  # выходим из retry-loop, идём в login
+
+        # ── Транзиентная ошибка 5xx → retry ──────────────────────
+        if r.status_code >= 500:
+            last_error = f"HTTP {r.status_code}: {r.text[:200]}"
+            print(
+                f"[INIT] register attempt {attempt}: {last_error}; "
+                f"retry через {_BOOTSTRAP_REGISTER_DELAY_SECONDS}s"
+            )
+            time.sleep(_BOOTSTRAP_REGISTER_DELAY_SECONDS)
+            continue
+
+        # ── Осмысленная 4xx (422 — email не валиден, 400 — что-то ещё) ──
+        # Retry не поможет. Логируем причину.
+        print(
+            f"[INIT] register вернул HTTP {r.status_code}: {r.text[:500]}\n"
+            f"[INIT] ПРОВЕРЬ: ADMIN_EMAIL/MODERATOR_EMAIL в .env.\n"
+            f"[INIT] Pydantic EmailStr отвергает .localhost / .test / "
+            f".invalid / .example / .onion — используй .internal."
+        )
+        return None
+
+    else:
+        # Retry-цикл исчерпан, не вышли ни в 201, ни в 409
+        if last_error:
+            print(f"[INIT] register исчерпал попытки: {last_error}")
+        return None
+
+    # ── 2. Уже существует → логинимся по email ─────────────────────
+    try:
+        lr = httpx.post(
+            f"{base}/api/v1/auth/login",
+            json={"email": email, "password": password},
+            timeout=15.0,
+        )
+    except httpx.HTTPError as exc:
+        print(f"[INIT] login: сетевая ошибка: {exc}")
+        return None
+
+    if lr.status_code != 200:
+        print(f"[INIT] login вернул HTTP {lr.status_code}: {lr.text[:200]}")
+        return None
+
+    body = lr.json()
+
+    # ── MFA включён у bootstrap-пользователя ───────────────────────
+    # Из скрипта MFA не пройти. Просим оператора разобраться руками.
+    if body.get("mfa_required"):
+        print(
+            f"[INIT] {email} требует MFA — bootstrap невозможен. "
+            "Сбросьте MFA через auth-service (users/me/mfa/disable) "
+            "или используйте другой аккаунт."
+        )
+        return None
+
+    token = body.get("access_token")
+    if not token:
+        print(f"[INIT] login не вернул access_token: {body}")
+        return None
+
+    # ── 3. Профиль ─────────────────────────────────────────────────
+    try:
+        mr = httpx.get(
+            f"{base}/api/v1/users/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10.0,
+        )
+    except httpx.HTTPError as exc:
+        print(f"[INIT] /users/me: сетевая ошибка: {exc}")
+        return None
+
+    if mr.status_code != 200:
+        print(f"[INIT] /users/me вернул HTTP {mr.status_code}")
+        return None
+    return mr.json()
+
+
+def _ensure_bootstrap_users(db: Session):
+    """
+    Создаёт admin и moderator в auth-service (если их нет) и в локальной
+    БД. Идемпотентно: при повторных запусках ничего не делает.
+
+    Порядок:
+      1. Проверяем, есть ли локальный admin.
+      2. Если нет — ждём auth-service, регистрируем admin+moderator,
+         создаём локальные записи с тем же id.
+    """
+    has_admin = db.query(User).filter(User.role == UserRole.admin).first()
+    if has_admin:
         return
 
-    admin_username = os.environ.get("ADMIN_USERNAME", "VasyMinusov")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "0907Seva!!!2003")
-    moderator_username = os.environ.get("MODERATOR_USERNAME", "moderator")
-    moderator_password = os.environ.get("MODERATOR_PASSWORD", "moderato123")
+    print("[INIT] Bootstrap: admin/moderator отсутствуют, регистрирую в auth-service")
+    if not _wait_for_auth_service():
+        print(
+            "[INIT] auth-service не отвечает — пропускаю bootstrap. "
+            "Перезапустите backend после того, как auth-service поднимется."
+        )
+        return
 
-    db.add(User(
-        username=admin_username,
-        email="admin@ctf-platform.localhost",
-        password_hash=hash_password(admin_password),
-        role=UserRole.admin,
-    ))
-    db.add(User(
-        username=moderator_username,
-        email="moderator@ctf-platform.localhost",
-        password_hash=hash_password(moderator_password),
-        role=UserRole.moderator,
-    ))
+    # ── admin ─────────────────────────────────────────────────────
+    profile = _register_or_login_in_auth_service(
+        settings.admin_username,
+        settings.admin_email,
+        settings.admin_password,
+    )
+    if profile:
+        # Проверка на коллизию id: если в локальной БД уже есть User
+        # с таким же id (например, кто-то уже создал запись при lazy
+        # provisioning), не будем пересоздавать.
+        existing = db.query(User).filter(User.id == profile["id"]).first()
+        if existing:
+            print(
+                f"[INIT] admin: User с id={profile['id']} уже существует "
+                f"({existing.username}); обновляю role на admin"
+            )
+            existing.role = UserRole.admin
+        else:
+            db.add(User(
+                id=profile["id"],
+                username=profile["username"],
+                email=profile["email"],
+                role=UserRole.admin,
+                points=0,
+                is_blocked=False,
+            ))
+        print(f"[INIT] admin создан: {profile['username']} (id={profile['id']})")
+    else:
+        print("[INIT] admin НЕ создан — см. логи выше")
+
+    # ── moderator ─────────────────────────────────────────────────
+    profile = _register_or_login_in_auth_service(
+        settings.moderator_username,
+        settings.moderator_email,
+        settings.moderator_password,
+    )
+    if profile:
+        existing = db.query(User).filter(User.id == profile["id"]).first()
+        if existing:
+            print(
+                f"[INIT] moderator: User с id={profile['id']} уже существует "
+                f"({existing.username}); обновляю role на moderator"
+            )
+            existing.role = UserRole.moderator
+        else:
+            db.add(User(
+                id=profile["id"],
+                username=profile["username"],
+                email=profile["email"],
+                role=UserRole.moderator,
+                points=0,
+                is_blocked=False,
+            ))
+        print(f"[INIT] moderator создан: {profile['username']} (id={profile['id']})")
+    else:
+        print("[INIT] moderator НЕ создан — см. логи выше")
+
     db.commit()
-    print(f"[INIT] Создан дефолтный администратор: {admin_username}")
-    print(f"[INIT] Создан дефолтный модератор: {moderator_username}")
 
+
+# ══════════════════════════════════════════════════════════════════════
+# Startup
+# ══════════════════════════════════════════════════════════════════════
 
 @app.on_event("startup")
 def on_startup():
     last_error = None
     for attempt in range(10):
         try:
-            # 1. Bootstrap существующей «старой» БД: если в ней уже есть
-            #    users, но нет alembic_version — стампим 0001_legacy, чтобы
-            #    Alembic не пытался пересоздать legacy-таблицы.
             _bootstrap_legacy_db()
-
-            # 2. Alembic upgrade head: создаёт всё, чего не хватает —
-            #    на чистой БД и legacy-таблицы, и таблицы соревнований.
             _run_alembic_migrations()
-
-            # 3. Исторические идемпотентные ALTER'ы — для очень старых БД.
             _run_legacy_ddl()
 
             last_error = None
@@ -183,7 +398,7 @@ def on_startup():
 
     db = SessionLocal()
     try:
-        _ensure_admin_exists(db)
+        _ensure_bootstrap_users(db)
         challenge_registry.sync_challenges(db)
     finally:
         db.close()

@@ -1,4 +1,7 @@
 services:
+  # ═══════════════════════════════════════════════════════════════════
+  # CTF-platform: Postgres
+  # ═══════════════════════════════════════════════════════════════════
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -6,6 +9,11 @@ services:
       POSTGRES_USER: ctf
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctf_password_change_me}
       POSTGRES_DB: ctf
+      # Подавляет warning "no usable system locales were found" —
+      # в alpine-образах локали не установлены, Postgres при initdb
+      # пытается их найти. C.UTF-8 всегда доступен.
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
@@ -17,6 +25,153 @@ services:
       retries: 15
       start_period: 5s
 
+  # ═══════════════════════════════════════════════════════════════════
+  # Auth-service: Postgres (отдельная БД)
+  # ═══════════════════════════════════════════════════════════════════
+  auth-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD must be set in .env}
+      POSTGRES_DB: auth
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      TZ: UTC
+      PGTZ: UTC
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - platform_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ═══════════════════════════════════════════════════════════════════
+  # Auth-service
+  # ═══════════════════════════════════════════════════════════════════
+  auth-service:
+    build: ./services/auth-service
+    restart: unless-stopped
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+    # ── Запуск с автомиграцией ─────────────────────────────────────
+    #
+    # Шаблон auth-service НЕ применяет Alembic-миграции в startup —
+    # это осознанное решение для prod (миграции через CI/CD).
+    # В docker-compose CI/CD нет, поэтому накатываем миграции сами.
+    #
+    # ФОРМАТ: literal block scalar `|` (НЕ folded `>`).
+    #
+    # Почему `|`, а не `>`:
+    #   Folded `>` складывает строки в одну, но строки с бо́льшим
+    #   отступом (как `--host 0.0.0.0` под `exec uvicorn`) сохраняют
+    #   перевод строки. В результате shell получает:
+    #
+    #       exec uvicorn app.main:app
+    #       --host 0.0.0.0         ← отдельная команда, не аргумент
+    #       --port 8000
+    #
+    #   Uvicorn запускается без флагов → дефолт 127.0.0.1 →
+    #   внутри контейнера loopback, снаружи недоступен → nginx 502.
+    #
+    #   Literal `|` сохраняет все переводы строк как есть, а `\`
+    #   в конце каждой строки — явное продолжение команды в shell.
+    #   Результат однозначен независимо от отступов.
+    #
+    # Дополнительно:
+    #   - `set -e` — если alembic упадёт, uvicorn не запустится.
+    #     Сервис с неполной схемой должен падать, а не отдавать 500.
+    #   - `-c /app/alembic.ini` — явный путь, не полагаемся на cwd.
+    #   - echo-маркеры перед/после — в логах видно, что команда
+    #     реально выполняется (а не работает CMD из Dockerfile).
+    #   - `exec` — shell заменяется uvicorn как PID 1, чтобы SIGTERM
+    #     попадал в uvicorn, а не в shell (иначе graceful shutdown
+    #     сломается, docker будет ждать и делать SIGKILL).
+    #
+    # Одинарные кавычки вокруг sh-команды — чтобы не эскейпить `$`
+    # и не путать compose-интерполяцию `${VAR}` с shell-переменными.
+    command: |
+      sh -c '
+        set -e
+        echo "[auth-service] applying alembic migrations..."
+        alembic -c /app/alembic.ini upgrade head
+        echo "[auth-service] migrations applied, starting uvicorn..."
+        exec uvicorn app.main:app \
+          --host 0.0.0.0 \
+          --port 8000 \
+          --proxy-headers \
+          --no-access-log \
+          --timeout-graceful-shutdown 30
+      '
+
+    env_file:
+      - ./services/auth-service/.env
+    environment:
+      # ── Postgres ─────────────────────────────────────────────────
+      POSTGRES_HOST: auth-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD must be set in .env}
+      POSTGRES_DB: auth
+
+      # ── App ──────────────────────────────────────────────────────
+      #
+      # APP_ENV=stage (НЕ prod):
+      #   - в prod auth-service форсит GOST-подпись и игнорирует
+      #     JWT_ALGORITHM, ctf-backend с HS256 не валидирует токены;
+      #   - в stage JWT_ALGORITHM уважается, QueuePool, LOG_FORMAT=json.
+      APP_ENV: "stage"
+      APP_DEBUG: "false"
+
+      # ── JWT ──────────────────────────────────────────────────────
+      JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:?AUTH_JWT_SECRET_KEY must be set in .env}
+      JWT_ALGORITHM: HS256
+      JWT_ISSUER: auth-service
+      JWT_AUDIENCE: auth-service
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+
+      # ── Rate limiter ─────────────────────────────────────────────
+      RATE_LIMIT_BACKEND: memory
+
+      # ── OAuth ────────────────────────────────────────────────────
+      OAUTH_ENABLED: "false"
+
+      # ── CORS ─────────────────────────────────────────────────────
+      CORS_ORIGINS: '["http://localhost","http://localhost:5173"]'
+      TRUSTED_HOSTS: '["*"]'
+
+      # ── HIBP ─────────────────────────────────────────────────────
+      HIBP_ENABLED: "true"
+      HIBP_FAIL_OPEN: "true"
+
+      # ── Metrics ──────────────────────────────────────────────────
+      METRICS_ENABLED: "true"
+      METRICS_REQUIRE_AUTH: "false"
+
+      # ── SMTP ─────────────────────────────────────────────────────
+      SMTP_HOST: ""
+
+      FRONTEND_URL: "http://localhost"
+    networks:
+      - platform_net
+
+  # ═══════════════════════════════════════════════════════════════════
+  # CTF-platform backend
+  # ═══════════════════════════════════════════════════════════════════
   backend:
     build: ./backend
     restart: unless-stopped
@@ -25,38 +180,45 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 10s
+      start_period: 20s
     environment:
+      PYTHONUNBUFFERED: "1"
       DATABASE_URL: postgresql+psycopg2://ctf:${POSTGRES_PASSWORD:-ctf_password_change_me}@db:5432/ctf
-      # Секреты и учётки — из .env (генерируются lan-setup.sh).
-      JWT_SECRET: ${JWT_SECRET:-change_me_super_secret}
+
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET_KEY:?AUTH_JWT_SECRET_KEY must be set in .env}
+      AUTH_JWT_ALGORITHM: HS256
+      AUTH_ISSUER: auth-service
+      AUTH_AUDIENCE: auth-service
+      AUTH_SERVICE_URL: "http://auth-service:8000"
+
       ADMIN_USERNAME: ${ADMIN_USERNAME:-VasyMinusov}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@ctf-platform.internal}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-0907Seva!!!2003}
       MODERATOR_USERNAME: ${MODERATOR_USERNAME:-moderator}
-      MODERATOR_PASSWORD: ${MODERATOR_PASSWORD:-moderato123}
+      MODERATOR_EMAIL: ${MODERATOR_EMAIL:-moderator@ctf-platform.internal}
+      MODERATOR_PASSWORD: ${MODERATOR_PASSWORD:-moderato1234567}
+
       CHALLENGE_PORT_RANGE_START: "30000"
       CHALLENGE_PORT_RANGE_END: "30199"
       CHALLENGES_DIR: /challenges
       INSTANCE_TTL_SECONDS: "2700"
       DOCKER_NETWORK: "ctf-platform_isolated_net"
       PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
-    # ВАЖНО: порт 8000 наружу НЕ публикуется. Backend доступен только
-    # по platform_net через nginx (/api/). Это убирает возможность
-    # кому-либо в LAN бить по API напрямую.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./challenges:/challenges        # без :ro
+      - ./challenges:/challenges
     depends_on:
       db:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
     networks:
-      # backend больше НЕ в isolated_net: управление контейнерами идёт
-      # через Docker socket, сетевая связность с заданиями не нужна.
-      # Это убирает возможность заданиям из isolated_net обращаться
-      # к backend и БД.
       - platform_net
       - isolated_net
 
+  # ═══════════════════════════════════════════════════════════════════
+  # Nginx
+  # ═══════════════════════════════════════════════════════════════════
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -66,6 +228,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+      - auth-service
     networks:
       - platform_net
 
@@ -74,10 +237,7 @@ networks:
     driver: bridge
   isolated_net:
     driver: bridge
-    # Если заданиям НЕ нужен исходящий доступ (в т.ч. reverse shell в
-    # metasploit-201, ssrf-201 в интернет, chain-201 наружу) —
-    # раскомментируйте:
-    # internal: true
 
 volumes:
   db_data:
+  auth_db_data:

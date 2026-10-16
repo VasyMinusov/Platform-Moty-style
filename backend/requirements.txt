@@ -5,8 +5,11 @@ psycopg2-binary==2.9.9
 pydantic==2.7.1
 pydantic-settings==2.2.1
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
 docker==7.1.0
 pyyaml==6.0.1
 python-multipart==0.0.9
 alembic==1.13.2
+
+# HTTP-клиент для server-to-server вызовов auth-service
+# (lazy provisioning пользователей, bootstrap admin/moderator).
+httpx==0.27.0

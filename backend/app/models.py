@@ -11,6 +11,7 @@ from .database import Base
 
 from . import models_notifications  # noqa: E402,F401
 
+
 class UserRole(str, enum.Enum):
     student = "student"
     moderator = "moderator"
@@ -18,19 +19,36 @@ class UserRole(str, enum.Enum):
 
 
 class User(Base):
+    """
+    Локальный профиль CTF-платформы.
+
+    Источник истины для credentials (пароль, MFA, email verification) —
+    auth-service. Здесь только CTF-специфичные поля: role, points,
+    status, is_blocked.
+
+    id совпадает с id пользователя в auth-service (claims.sub в JWT).
+    autoincrement=False: значения приходят извне, БД не генерирует.
+    """
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     username = Column(String(64), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+
+    # CTF-специфичная роль. Отличается от auth-service.is_admin —
+    # там «может управлять аккаунтами», здесь «админ CTF-мероприятия».
     role = Column(Enum(UserRole), default=UserRole.student, nullable=False)
     points = Column(Integer, default=0, nullable=False)
-    # Произвольный статус, который выставляет админ (отображается как #статус).
+
+    # Произвольный статус, отображаемый как #статус.
     status = Column(String(64), nullable=True)
-    # Заблокированный пользователь не может войти и пользоваться API.
+
+    # Локальная блокировка (независима от auth-service).
     is_blocked = Column(Boolean, default=False, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # ── password_hash удалён — credentials живут в auth-service ──
 
     solves = relationship("Solve", back_populates="user")
     instances = relationship("ChallengeInstance", back_populates="user")
@@ -67,7 +85,7 @@ class ChallengeInstance(Base):
     started_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=False)
 
-    # ── Поля модуля «Соревнования» (nullable, обратная совместимость) ──
+    # ── Поля модуля «Соревнования» ───────────────────────────────
     competition_id = Column(
         Integer,
         ForeignKey("competitions.id", ondelete="SET NULL"),
@@ -84,9 +102,6 @@ class ChallengeInstance(Base):
     user = relationship("User", back_populates="instances")
     challenge = relationship("Challenge", back_populates="instances")
 
-    # Старый UniqueConstraint("user_id", "challenge_id") заменён на три
-    # partial unique index'а — они допускают одновременное существование
-    # глобального инстанса и инстансов в разных соревнованиях.
     __table_args__ = (
         Index(
             "uq_ci_global",
@@ -155,7 +170,4 @@ class Lesson(Base):
 
 
 # ── Модуль «Соревнования» ──
-# Импорт в самом конце файла, чтобы все модели выше уже были определены.
-# Это гарантирует, что Base.metadata соберёт и новые таблицы, и Alembic,
-# и Base.metadata.create_all увидят единую картину.
 from . import models_competitions  # noqa: E402,F401

@@ -451,3 +451,20 @@ def reap_expired(db: Session) -> int:
         except Exception:
             pass
     return len(expired)
+
+# ══════════════════════════════════════════════════════════════════════
+# Публичные хелперы
+# ══════════════════════════════════════════════════════════════════════
+
+def is_container_alive(container_id: str) -> bool:
+    """
+    Публичная обёртка над _container_is_alive.
+
+    Нужна роутерам (admin), чтобы отдавать в UI флаг «контейнер
+    реально жив». Внутренняя _container_is_alive — деталь реализации
+    orchestrator'а, но её логика (docker inspect + проверка статуса)
+    полезна и снаружи.
+    """
+    if not container_id:
+        return False
+    return _container_is_alive(container_id)

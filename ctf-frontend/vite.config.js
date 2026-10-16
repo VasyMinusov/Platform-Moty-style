@@ -27,17 +27,46 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      // Backend напрямую на :8000 не доступен (порт не публикуется),
-      // поэтому проксируем /api/* на nginx (порт 80), который срежет
-      // префикс /api/ и проксирует в backend:8000.
+      // ── Прокси /api/* на nginx (порт 80) ────────────────────────────
+      //
+      // ВАЖНО: rewrite НЕ применяется.
+      //
+      // Раньше (до интеграции с auth-service) Vite проксировал
+      // напрямую в backend, у которого роутеры живут без префикса
+      // /api — поэтому префикс срезался:
+      //
+      //     '/api': { rewrite: (p) => p.replace(/^\/api/, '') }
+      //
+      // Теперь архитектура другая:
+      //
+      //     браузер → nginx (:80) → backend (/api/*)
+      //                            → auth-service (/api/v1/*)
+      //
+      // nginx маршрутизирует по префиксу /api. Если Vite его срежет,
+      // запросы уйдут не туда:
+      //
+      //     /api/auth/me    → срез → /auth/me    → 500 (нет такого)
+      //     /api/v1/auth/login → срез → /v1/auth/login → 404
+      //
+      // Поэтому префикс сохраняем как есть.
       '/api': {
+        // nginx слушает на хосте, где запущен compose. Vite dev
+        // крутится на том же хосте, что и docker compose → localhost.
         target: 'http://localhost',
+
+        // changeOrigin=false: nginx получает оригинальный Host
+        // (localhost:5173), и в логах видно реального клиента.
+        // Если бы был true — Host стал бы 'localhost:80', и nginx
+        // логировал бы «себя», а не dev-сервер.
         changeOrigin: false,
-        ws: true, 
-        // Прокидываем исходный Host клиента в X-Forwarded-Host, чтобы
-        // backend формировал URL инстансов относительно того адреса,
-        // по которому клиент пришёл (Wi-Fi или LAN за роутером).
-        rewrite: (path) => path.replace(/^\/api/, ''),
+
+        // WebSocket (notifications/stream, competitions/stream).
+        ws: true,
+
+        // Прокидываем X-Forwarded-Host. Backend использует его для
+        // формирования URL инстансов заданий: если студент зашёл
+        // с 192.168.1.5:5173, инстанс будет на 192.168.1.5:30001,
+        // а не на 127.0.0.1:30001.
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
             if (req.headers.host) {

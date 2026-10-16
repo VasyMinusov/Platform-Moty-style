@@ -1,20 +1,20 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
+# ── Users ─────────────────────────────────────────────────────────────
+#
+# UserCreate и Token удалены — регистрация/логин теперь на auth-service.
+# Остались только схемы для локального профиля CTF-платформы.
 
 
 class UserOut(BaseModel):
     id: int
     username: str
-    # str, а не EmailStr: в БД могут быть адреса, которые pydantic считает
-    # невалидными (например admin@ctf-platform.localhost у дефолтного админа)
+    # str, а не EmailStr: в БД могут быть адреса, которые pydantic
+    # считает невалидными (например admin@ctf-platform.localhost).
     email: str
     role: str
     points: int
@@ -23,6 +23,7 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class AdminUserUpdate(BaseModel):
     """Правки пользователя администратором: статус и блокировка."""
@@ -35,9 +36,7 @@ class RoleUpdate(BaseModel):
     role: str
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+# ── Challenges ────────────────────────────────────────────────────────
 
 
 class ChallengeOut(BaseModel):
@@ -70,7 +69,8 @@ class SubmitResult(BaseModel):
     points_awarded: Optional[int] = None
 
 
-# ── Write-up schemas ──
+# ── Write-ups ────────────────────────────────────────────────────────
+
 
 class WriteupCreate(BaseModel):
     challenge_slug: str
@@ -94,7 +94,8 @@ class WriteupOut(BaseModel):
         from_attributes = True
 
 
-# ── Lesson (библиотека занятий) schemas ──
+# ── Lessons ──────────────────────────────────────────────────────────
+
 
 class LessonCreate(BaseModel):
     title: str
@@ -123,4 +124,49 @@ class LessonOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ── Instances (детальный вид для UI) ────────────────────────────────────
+#
+# Используется:
+#   - GET /challenges/instances/running      (свои глобальные инстансы)
+#   - GET /admin/instances                   (все инстансы, админ)
+
+
+class InstanceDetailOut(BaseModel):
+    """
+    Инстанс задания с URL, построенным для клиента, который сделал
+    запрос.
+
+    `url` строится из Host / X-Forwarded-Host запроса — если студент
+    зашёл с 192.168.1.5, инстанс откроется на http://192.168.1.5:30001,
+    а не на 127.0.0.1:30001.
+
+    scope:
+        "global"      — инстанс глобального Challenge (из /challenges)
+        "competition" — инстанс CompetitionChallenge (из соревнования)
+    """
+    id: int
+    scope: str = "global"
+    user_id: int
+    username: Optional[str] = None
+    challenge_id: int
+    challenge_slug: str
+    challenge_title: str
+    container_id: str
+    host_port: int
+    url: str
+    status: str
+    started_at: Optional[datetime] = None
+    expires_at: datetime
+    is_expired: bool = False
+    # None — не проверяли (дешевле для публичного списка).
+    # True/False — результат docker inspect (для админского списка).
+    is_alive: Optional[bool] = None
+    # Для scope="competition": slug соревнования.
+    competition_slug: Optional[str] = None
+
+
+class AdminInstancesListOut(BaseModel):
+    items: list[InstanceDetailOut]
+    total: int
 

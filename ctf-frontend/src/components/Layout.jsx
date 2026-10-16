@@ -24,6 +24,7 @@ const STAFF_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin', label: 'Админ', code: '08' },
   { to: '/admin/writeups', label: 'Управление', code: '09' },
+  { to: '/admin/instances', label: 'Инстансы', code: '10' },
 ]
 
 export default function Layout({ children }) {

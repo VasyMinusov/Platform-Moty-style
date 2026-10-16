@@ -18,15 +18,30 @@ function formatCountdown(expiresAt) {
   return `${minutes}:${seconds}`
 }
 
-export default function ChallengeCard({ challenge, onSolved }) {
+export default function ChallengeCard({
+  challenge,
+  initialInstance,
+  onSolved,
+  onInstanceStateChange,
+}) {
   const [expanded, setExpanded] = useState(false)
-  const [instance, setInstance] = useState(null)
+  // ИНИЦИАЛИЗАЦИЯ: если бэк уже знает про работающий инстанс для этого
+  // задания — начинаем с этого состояния. Так после перехода на /challenges
+  // карточка сразу показывает «Запущено», а не кнопку «Запустить».
+  const [instance, setInstance] = useState(initialInstance)
   const [flag, setFlag] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [countdown, setCountdown] = useState(null)
   const timerRef = useRef(null)
+
+  // СИНХРОНИЗАЦИЯ с родителем: если runningBySlug в ChallengesPage
+  // обновился (например, после F5, или после start/stop другой карточки
+  // того же задания) — обновляем локальное состояние.
+  useEffect(() => {
+    setInstance(initialInstance)
+  }, [initialInstance])
 
   useEffect(() => {
     if (!instance) {
@@ -46,6 +61,7 @@ export default function ChallengeCard({ challenge, onSolved }) {
     try {
       const data = await api.startChallenge(challenge.slug)
       setInstance(data)
+      onInstanceStateChange?.(challenge.slug, data)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось запустить инстанс')
     } finally {
@@ -59,6 +75,7 @@ export default function ChallengeCard({ challenge, onSolved }) {
     try {
       await api.stopChallenge(challenge.slug)
       setInstance(null)
+      onInstanceStateChange?.(challenge.slug, null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось остановить инстанс')
     } finally {
@@ -77,6 +94,11 @@ export default function ChallengeCard({ challenge, onSolved }) {
       if (data.correct) {
         setFlag('')
         onSolved?.(challenge.id)
+        // Бэк автостопит инстанс после верного флага — синхронизируем.
+        if (instance) {
+          setInstance(null)
+          onInstanceStateChange?.(challenge.slug, null)
+        }
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось проверить флаг')

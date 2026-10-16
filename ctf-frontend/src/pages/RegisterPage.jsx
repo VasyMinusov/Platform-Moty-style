@@ -4,21 +4,38 @@ import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../api/client'
 import './Auth.css'
 
+const MIN_PASSWORD_LENGTH = 15
+
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH
+  const canSubmit =
+    username.trim().length >= 3 &&
+    email.trim().length > 0 &&
+    password.length >= MIN_PASSWORD_LENGTH
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
-      await register(username, email, password)
+      const result = await register(username.trim(), email.trim(), password)
+
+      // Если auth-service вернул mfa_required на автоматический login
+      // после регистрации (например, MFA уже настроен для этого email
+      // от прошлой сессии) — отправим на /login.
+      if (result?.mfa_required) {
+        navigate('/login', { replace: true })
+        return
+      }
       navigate('/challenges', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось зарегистрироваться')
@@ -41,8 +58,11 @@ export default function RegisterPage() {
             ORDO
           </span>
         </div>
+
         <h1 className="auth-title">Открыть досье</h1>
-        <p className="auth-subtitle">Регистрация нового оператора платформы.</p>
+        <p className="auth-subtitle">
+          Регистрация нового оператора. Пароль — минимум {MIN_PASSWORD_LENGTH} символов.
+        </p>
 
         {error && <div className="alert">{error}</div>}
 
@@ -56,6 +76,7 @@ export default function RegisterPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               minLength={3}
+              maxLength={64}
             />
           </div>
           <div className="field">
@@ -70,7 +91,9 @@ export default function RegisterPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Пароль</label>
+            <label htmlFor="password">
+              Пароль (минимум {MIN_PASSWORD_LENGTH} символов)
+            </label>
             <input
               id="password"
               type="password"
@@ -78,10 +101,19 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
             />
+            {passwordTooShort && (
+              <p className="mono" style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
+                Ещё {MIN_PASSWORD_LENGTH - password.length} симв. до минимума
+              </p>
+            )}
           </div>
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            disabled={loading || !canSubmit}
+          >
             {loading ? 'Создание…' : 'Зарегистрироваться'}
           </button>
         </form>

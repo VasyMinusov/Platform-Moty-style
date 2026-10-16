@@ -12,6 +12,11 @@ export default function ChallengesPage() {
   const [category, setCategory] = useState(ALL)
   const [status, setStatus] = useState(ALL)
 
+  // Слаг → данные инстанса. Заполняется из /challenges/instances/running.
+  // Карточка получает initialInstance и сразу показывает «Запущено»,
+  // если контейнер уже работает на бэке.
+  const [runningBySlug, setRunningBySlug] = useState({})
+
   useEffect(() => {
     load()
   }, [])
@@ -20,8 +25,23 @@ export default function ChallengesPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.listChallenges()
-      setChallenges(data)
+      // Два запроса параллельно. Список инстансов — best-effort:
+      // если он упал, страница всё равно должна показать задания.
+      const [challengesData, instancesData] = await Promise.all([
+        api.listChallenges(),
+        api.listRunningInstances().catch(() => []),
+      ])
+
+      setChallenges(challengesData)
+
+      const map = {}
+      for (const inst of instancesData) {
+        map[inst.challenge_slug] = {
+          url: inst.url,
+          expires_at: inst.expires_at,
+        }
+      }
+      setRunningBySlug(map)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось загрузить задания')
     } finally {
@@ -31,6 +51,23 @@ export default function ChallengesPage() {
 
   function markSolved(id) {
     setChallenges((prev) => prev.map((c) => (c.id === id ? { ...c, solved: true } : c)))
+  }
+
+  // Обновить локальную карту после start/stop в карточке.
+  // Вызывается из ChallengeCard через onInstanceStateChange.
+  function handleInstanceStateChange(slug, instance) {
+    setRunningBySlug((prev) => {
+      const next = { ...prev }
+      if (instance) {
+        next[slug] = {
+          url: instance.url,
+          expires_at: instance.expires_at,
+        }
+      } else {
+        delete next[slug]
+      }
+      return next
+    })
   }
 
   const categories = useMemo(
@@ -105,7 +142,13 @@ export default function ChallengesPage() {
       ) : (
         <div className="case-list">
           {filtered.map((challenge) => (
-            <ChallengeCard key={challenge.id} challenge={challenge} onSolved={markSolved} />
+            <ChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              initialInstance={runningBySlug[challenge.slug] || null}
+              onSolved={markSolved}
+              onInstanceStateChange={handleInstanceStateChange}
+            />
           ))}
         </div>
       )}

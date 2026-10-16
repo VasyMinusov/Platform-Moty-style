@@ -1,5 +1,11 @@
 const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Auth-service префикс. Запросы, которые обслуживает auth-service,
+// идут через /api/v1/... (nginx → auth-service:8000/api/v1/...).
+// Остальные — через /api/... (nginx → backend:8000/...).
+const AUTH_PREFIX = '/v1'
+
+
 export class ApiError extends Error {
   constructor(message, status, detail) {
     super(message)
@@ -8,11 +14,66 @@ export class ApiError extends Error {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Интеграция с AuthContext
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Client.js не знает про React. AuthContext не хочет знать про HTTP.
+// Решение: два callback'а, которые AuthContext регистрирует при mount.
+//
+//   _onAuthLost      — вызывается, когда 401 окончателен (refresh не помог
+//                      или его нет). AuthContext в этом случае чистит state
+//                      и редиректит на /login.
+//
+//   _tokenRefresher  — функция, которая делает POST /auth/refresh и
+//                      сохраняет новые токены. Возвращает access_token
+//                      или null. AuthContext ставит её, чтобы клиент
+//                      мог обновить токен по 401 без дублирования логики.
+//
+// Если клиент используется без AuthContext (например, в скрипте или
+// тесте) — оба callback'а null, и на 401 мы просто пробрасываем ошибку.
+
+let _onAuthLost = null
+let _tokenRefresher = null
+
+export function setOnAuthLost(fn) {
+  _onAuthLost = fn
+}
+
+export function setTokenRefresher(fn) {
+  _tokenRefresher = fn
+}
+
+
 function getToken() {
   return localStorage.getItem('ctf_token')
 }
 
-export async function apiFetch(path, { method = 'GET', body, headers, skipAuth = false } = {}) {
+
+// ═══════════════════════════════════════════════════════════════════════════
+// apiFetch — основной HTTP-клиент
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Поведение по статусам:
+//
+//   200..299  — вернуть распарсенный JSON (или null для 204).
+//   401       — попробовать refresh (один раз) и повторить запрос.
+//               Если refresh не удался или его нет — вызвать _onAuthLost
+//               и бросить ApiError(401).
+//   остальные — распарсить problem-details, бросить ApiError.
+//
+// Параметр _retried защищает от бесконечной рекурсии: после refresh
+// повторный запрос идёт с _retried=true, и повторный 401 сразу
+// обрабатывается как окончательный.
+
+export async function apiFetch(path, {
+  method = 'GET',
+  body,
+  headers,
+  skipAuth = false,
+  _retried = false,
+} = {}) {
   const finalHeaders = { ...headers }
   let finalBody = body
 
@@ -28,12 +89,9 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
     finalHeaders['Authorization'] = `Bearer ${token}`
   }
 
-  // Fetch API запрещает body для GET/HEAD — добавляем его только если это
-  // осмысленно. Иначе Firefox/Safari бросают TypeError.
-  const fetchOptions = {
-    method,
-    headers: finalHeaders,
-  }
+  // Fetch API запрещает body для GET/HEAD — добавляем только если
+  // это осмысленно. Иначе Firefox/Safari бросают TypeError.
+  const fetchOptions = { method, headers: finalHeaders }
   if (finalBody !== undefined && method !== 'GET' && method !== 'HEAD') {
     fetchOptions.body = finalBody
   }
@@ -47,6 +105,34 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
 
   if (response.status === 204) return null
 
+  // ── 401: попытка refresh + retry ──────────────────────────────────────
+  //
+  // Условия, когда НЕ пытаемся refresh:
+  //   - skipAuth=true (login/register/refresh сами по себе) — refresh
+  //     тут не нужен и может создать цикл.
+  //   - _retried=true — уже пытались, второй раз не надо.
+  //   - _tokenRefresher не установлен — некому обновлять.
+  //
+  // После успешного refresh повторяем ОРИГИНАЛЬНЫЙ запрос с _retried=true.
+  if (
+    response.status === 401 &&
+    !skipAuth &&
+    !_retried &&
+    _tokenRefresher
+  ) {
+    const newToken = await _tokenRefresher()
+    if (newToken) {
+      return apiFetch(path, {
+        method,
+        body,
+        headers,
+        skipAuth,
+        _retried: true,
+      })
+    }
+    // refresh не удался → падаем ниже, как окончательный 401
+  }
+
   let data = null
   const text = await response.text()
   if (text) {
@@ -58,14 +144,16 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
   }
 
   if (!response.ok) {
+    // Окончательный 401 (после refresh или без него) — сообщаем AuthContext.
+    // ВАЖНО: чистку localStorage и редирект делает AuthContext, не мы.
+    // Так мы избегаем ситуации «client уже удалил токены, а AuthContext
+    // попытался refresh с уже стёртым refreshToken».
     if (response.status === 401 && !skipAuth) {
-      localStorage.removeItem('ctf_token')
-      localStorage.removeItem('ctf_username')
-      localStorage.removeItem('ctf_role')
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.assign('/login')
+      if (_onAuthLost) {
+        _onAuthLost()
       }
     }
+
     const detail = data?.detail
     const message = Array.isArray(detail)
       ? detail.map((d) => d.msg).join('; ')
@@ -76,10 +164,7 @@ export async function apiFetch(path, { method = 'GET', body, headers, skipAuth =
   return data
 }
 
-/**
- * Скачивает файл с авторизацией. Возвращает Blob.
- * Используется, когда нужно отдать файл браузеру с Bearer-токеном.
- */
+
 export async function downloadFile(path) {
   const token = getToken()
   const headers = {}
@@ -102,9 +187,7 @@ export async function downloadFile(path) {
   return response.blob()
 }
 
-/**
- * Скачивает файл и сохраняет его через <a download>.
- */
+
 export async function downloadAndSave(path, filename) {
   const blob = await downloadFile(path)
   const url = URL.createObjectURL(blob)
@@ -117,35 +200,78 @@ export async function downloadAndSave(path, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+
 export const api = {
-  // ── Auth ──
+  // ══════════════════════════════════════════════════════════════
+  // Auth (auth-service через /api/v1/)
+  // ══════════════════════════════════════════════════════════════
+
   register: (payload) =>
-    apiFetch('/auth/register', { method: 'POST', body: payload, skipAuth: true }),
-  login: (username, password) => {
-    const form = new URLSearchParams()
-    form.set('username', username)
-    form.set('password', password)
-    return apiFetch('/auth/login', { method: 'POST', body: form, skipAuth: true })
-  },
+    apiFetch(`${AUTH_PREFIX}/auth/register`, {
+      method: 'POST',
+      body: payload,
+      skipAuth: true,
+    }),
+
+  login: (email, password) =>
+    apiFetch(`${AUTH_PREFIX}/auth/login`, {
+      method: 'POST',
+      body: { email, password },
+      skipAuth: true,
+    }),
+
+  mfaVerify: (mfa_token, code) =>
+    apiFetch(`${AUTH_PREFIX}/auth/mfa/verify`, {
+      method: 'POST',
+      body: { mfa_token, code },
+      skipAuth: true,
+    }),
+
+  refreshToken: (refresh_token) =>
+    apiFetch(`${AUTH_PREFIX}/auth/refresh`, {
+      method: 'POST',
+      body: { refresh_token },
+      skipAuth: true,
+    }),
+
+  logout: (refresh_token, all_sessions = false) =>
+    apiFetch(`${AUTH_PREFIX}/auth/logout`, {
+      method: 'POST',
+      body: { refresh_token, all_sessions },
+    }),
+
+  // ── Локальный профиль CTF ────────────────────────────────────
   me: () => apiFetch('/auth/me'),
 
-  // ── Задания (глобальные) ──
+  // ── Задания ──
   listChallenges: () => apiFetch('/challenges'),
   startChallenge: (slug) => apiFetch(`/challenges/${slug}/start`, { method: 'POST' }),
   stopChallenge: (slug) => apiFetch(`/challenges/${slug}/stop`, { method: 'POST' }),
   submitFlag: (slug, flag) =>
     apiFetch(`/challenges/${slug}/submit`, { method: 'POST', body: { flag } }),
 
-  // ── Админ (глобальный) ──
+  // ── Админ ──
   syncChallenges: () => apiFetch('/admin/challenges/sync', { method: 'POST' }),
   reapInstances: () => apiFetch('/admin/instances/reap', { method: 'POST' }),
+  
+  // ── Админ: инстансы ──
+  adminListInstances: (params = {}) => {
+    const qs = new URLSearchParams()
+    if (params.only_alive) qs.set('only_alive', 'true')
+    const suffix = qs.toString() ? `?${qs}` : ''
+    return apiFetch(`/admin/instances${suffix}`)
+  },
+  adminStopInstance: (id) =>
+    apiFetch(`/admin/instances/${id}/stop`, { method: 'POST' }),
+  adminStopAllInstances: () =>
+    apiFetch('/admin/instances/stop-all', { method: 'POST' }),
   listUsers: () => apiFetch('/admin/users'),
   updateUser: (id, payload) =>
     apiFetch(`/admin/users/${id}`, { method: 'PATCH', body: payload }),
   setUserRole: (id, role) =>
     apiFetch(`/admin/users/${id}/role`, { method: 'PUT', body: { role } }),
 
-  // ── Библиотека занятий ──
+  // ── Занятия ──
   listLessons: () => apiFetch('/lessons'),
   getLesson: (slug) => apiFetch(`/lessons/${slug}`),
   createLesson: (payload) =>
@@ -163,9 +289,9 @@ export const api = {
     apiFetch(`/writeups/${slug}`, { method: 'PUT', body: payload }),
   deleteWriteup: (slug) => apiFetch(`/writeups/${slug}`, { method: 'DELETE' }),
 
-  // ══════════════════════════════════════════════════════════════════
-  // Соревнования: публичное / участническое
-  // ══════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
+  // Соревнования (ctf-backend)
+  // ══════════════════════════════════════════════════════════════
 
   listCompetitions: (params = {}) => {
     const qs = new URLSearchParams()
@@ -181,7 +307,6 @@ export const api = {
     apiFetch(`/competitions/${slug}/apply`, { method: 'DELETE' }),
   getMyApplication: (slug) => apiFetch(`/competitions/${slug}/my-application`),
 
-  // Задания соревнования
   listCompetitionChallenges: (slug) => apiFetch(`/competitions/${slug}/challenges`),
   getCompetitionChallenge: (slug, chSlug) =>
     apiFetch(`/competitions/${slug}/challenges/${chSlug}`),
@@ -201,10 +326,8 @@ export const api = {
   listPurchasedHints: (slug, chSlug) =>
     apiFetch(`/competitions/${slug}/challenges/${chSlug}/hints/purchased`),
 
-  // Leaderboard
   getLeaderboard: (slug) => apiFetch(`/competitions/${slug}/leaderboard`),
 
-  // Команды
   listTeams: (slug) => apiFetch(`/competitions/${slug}/teams`),
   getTeam: (slug, teamId) => apiFetch(`/competitions/${slug}/teams/${teamId}`),
   getMyTeam: (slug) => apiFetch(`/competitions/${slug}/my-team`),
@@ -239,14 +362,9 @@ export const api = {
   leaveTeam: (slug, teamId) =>
     apiFetch(`/competitions/${slug}/teams/${teamId}/leave`, { method: 'POST' }),
 
-  // Апелляции (участник)
   createAppeal: (slug, payload) =>
     apiFetch(`/competitions/${slug}/appeals`, { method: 'POST', body: payload }),
   listMyAppeals: (slug) => apiFetch(`/competitions/${slug}/my-appeals`),
-
-  // ══════════════════════════════════════════════════════════════════
-  // Соревнования: админ
-  // ══════════════════════════════════════════════════════════════════
 
   adminListCompetitions: (params = {}) => {
     const qs = new URLSearchParams()
@@ -352,10 +470,7 @@ export const api = {
       body: payload,
     }),
 
-  // ══════════════════════════════════════════════════════════════════
-  // Уведомления
-  // ══════════════════════════════════════════════════════════════════
-
+  // ── Уведомления ──
   listNotifications: ({ limit = 50, offset = 0, unread_only = false } = {}) => {
     const qs = new URLSearchParams()
     qs.set('limit', String(limit))
@@ -370,4 +485,12 @@ export const api = {
   deleteNotification: (id) =>
     apiFetch(`/notifications/${id}`, { method: 'DELETE' }),
   clearNotifications: () => apiFetch('/notifications', { method: 'DELETE' }),
+
+  // ── Список running-инстансов текущего пользователя ──
+  //
+  // Фронт вызывает этот эндпоинт при загрузке /challenges, чтобы
+  // показать «инстанс уже запущен» для тех заданий, где контейнер
+  // реально работает. Состояние живёт на бэке, а не в React-компоненте.
+  listRunningInstances: () =>
+    apiFetch('/challenges/instances/running'),
 }

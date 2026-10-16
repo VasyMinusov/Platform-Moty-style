@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -6,10 +7,28 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..database import get_db
 from ..models import Challenge, ChallengeInstance, Solve, User
-from ..schemas import ChallengeOut, InstanceOut, FlagSubmit, SubmitResult
+from ..schemas import (
+    ChallengeOut,
+    FlagSubmit,
+    InstanceDetailOut,
+    InstanceOut,
+    SubmitResult,
+)
 from ..security import get_current_user
 from ..services import orchestrator
 
+from ..config import settings
+from ..database import get_db
+from ..models import Challenge, ChallengeInstance, Solve, User
+from ..schemas import (
+    ChallengeOut,
+    FlagSubmit,
+    InstanceDetailOut,
+    InstanceOut,
+    SubmitResult,
+)
+from ..security import get_current_user
+from ..services import orchestrator
 router = APIRouter(prefix="/challenges", tags=["challenges"])
 
 
@@ -47,6 +66,63 @@ def list_challenges(db: Session = Depends(get_db), user: User = Depends(get_curr
         item.solved = c.id in solved_ids
         out.append(item)
     return out
+
+
+@router.get("/instances/running", response_model=list[InstanceDetailOut])
+def list_my_running_instances(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[InstanceDetailOut]:
+    """
+    Список running-инстансов ТЕКУЩЕГО пользователя для глобальных заданий.
+
+    Нужен фронту, чтобы при возврате на /challenges показать «инстанс
+    уже запущен», а не кнопку «Запустить». Состояние живёт на бэке
+    (ChallengeInstance в БД), а не в React-компоненте.
+
+    Возвращаются только инстансы БЕЗ competition_id — соревновательные
+    отдаются через /competitions/{slug}/challenges (см.
+    competitions_instances.py).
+
+    URL формируется для того хоста, по которому клиент пришёл
+    (X-Forwarded-Host / Host). Это позволяет работать одновременно
+    по Wi-Fi и LAN-адресу.
+    """
+    rows = (
+        db.query(ChallengeInstance, Challenge)
+        .join(Challenge, Challenge.id == ChallengeInstance.challenge_id)
+        .filter(
+            ChallengeInstance.user_id == user.id,
+            ChallengeInstance.status == "running",
+            ChallengeInstance.competition_id.is_(None),
+        )
+        .order_by(ChallengeInstance.started_at.desc())
+        .all()
+    )
+
+    host = _client_host(request)
+    now = datetime.utcnow()
+
+    return [
+        InstanceDetailOut(
+            id=inst.id,
+            scope="global",
+            user_id=user.id,
+            username=user.username,
+            challenge_id=ch.id,
+            challenge_slug=ch.slug,
+            challenge_title=ch.title,
+            container_id=inst.container_id,
+            host_port=inst.host_port,
+            url=f"http://{host}:{inst.host_port}",
+            status=inst.status,
+            started_at=inst.started_at,
+            expires_at=inst.expires_at,
+            is_expired=inst.expires_at < now,
+        )
+        for inst, ch in rows
+    ]
 
 
 @router.post("/{slug}/start", response_model=InstanceOut)

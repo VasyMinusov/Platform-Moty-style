@@ -29,6 +29,7 @@ import AdminCompetitionChallengesPage from './pages/admin/AdminCompetitionChalle
 import AdminCompetitionTeamsPage from './pages/admin/AdminCompetitionTeamsPage'
 import AdminCompetitionDashboardPage from './pages/admin/AdminCompetitionDashboardPage'
 import AdminCompetitionAppealsPage from './pages/admin/AdminCompetitionAppealsPage'
+import AdminInstancesPage from './pages/admin/AdminInstancesPage'
 
 // ── Гварды ──────────────────────────────────────────────────────────
 
@@ -217,6 +218,16 @@ export default function App() {
           <AdminRoute>
             <Layout>
               <WriteupsPage />
+            </Layout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/instances"
+        element={
+          <AdminRoute>
+            <Layout>
+              <AdminInstancesPage />
             </Layout>
           </AdminRoute>
         }
