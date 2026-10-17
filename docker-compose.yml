@@ -229,6 +229,15 @@ services:
     depends_on:
       - backend
       - auth-service
+      - frontend
+    networks:
+      - platform_net
+
+  frontend:
+    build:
+      context: ./ctf-frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     networks:
       - platform_net
 

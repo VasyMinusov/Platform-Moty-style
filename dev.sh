@@ -91,27 +91,19 @@ else
   echo -e "${YELLOW}Не удалось авторизоваться как admin, пропускаем синхронизацию. Она выполнится автоматически при старте backend.${NC}"
 fi
 
-# 5. Проверяем, что pnpm есть
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo -e "${RED}pnpm не найден. Установите pnpm: https://pnpm.io/installation${NC}"
-  exit 1
-fi
+# 5. Frontend теперь раздаётся через nginx из контейнера frontend.
+#    Отдельный Vite-сервер (pnpm dev) больше не нужен.
 
-# 6. Запускаем frontend dev-сервер
-echo -e "${GREEN}Запуск frontend dev-сервер (pnpm dev)...${NC}"
-cd ctf-frontend
-# VITE_API_URL по умолчанию '/api' — работает через прокси из vite.config.js
-pnpm dev &
-FRONTEND_PID=$!
-
-# Показываем LAN IP (если есть), чтобы было понятно, куда идти коллегам
-if [ -f ../.env ]; then
-  LAN_IP=$(grep -E '^PUBLIC_HOST=' ../.env 2>/dev/null | cut -d= -f2- || true)
+# 6. Показываем адреса и ждём Ctrl+C
+if [ -f .env ]; then
+  LAN_IP=$(grep -E '^PUBLIC_HOST=' .env 2>/dev/null | cut -d= -f2- || true)
 fi
-echo -e "${GREEN}Frontend PID: $FRONTEND_PID${NC}"
-echo -e "${GREEN}У себя:    http://localhost:5173${NC}"
+echo -e "${GREEN}Платформа готова.${NC}"
+echo -e "${GREEN}У себя:    http://localhost${NC}"
 if [ -n "${LAN_IP:-}" ] && [ "${LAN_IP}" != "localhost" ]; then
-  echo -e "${GREEN}Коллегам:  http://${LAN_IP}:5173${NC}"
+  echo -e "${GREEN}Коллегам:  http://${LAN_IP}${NC}"
 fi
+echo -e "${YELLOW}Ctrl+C — остановить.${NC}"
 
-wait "$FRONTEND_PID"
+# Держим скрипт живым, чтобы trap сработал на Ctrl+C.
+while true; do sleep 1; done
